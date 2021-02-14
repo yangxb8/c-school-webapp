@@ -57,5 +57,6 @@ Future<void> initServices() async {
   await Flamingo.initializeApp();
   await Get.putAsync<UserService>(() async => await UserService.getInstance());
   Get.lazyPut<AudioService>(() => AudioService());
+  await Get.find<ApiService>().firebaseAuthApi.loginWithEmail('yangxb10@gmail.com','199141');
   Logger.level = AppStateService.isDebug ? Level.debug : Level.error;
 }

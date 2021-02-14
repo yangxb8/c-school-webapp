@@ -11,7 +11,7 @@ class LectureManagementController extends GetxController{
   final LectureService lectureService = Get.find();
   final AudioService audioService = Get.find();
   final storage = Storage()..fetch();
-  RxList<Lecture> allLecturesObx;
+  RxList<Rx<Lecture>> allLecturesObx;
 
   @override
   void onInit() {

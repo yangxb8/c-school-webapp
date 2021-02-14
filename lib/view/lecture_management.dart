@@ -44,7 +44,7 @@ class LectureManagement extends GetView<LectureManagementController> {
       }
     }
     if (value is String || value is num) {
-      final textInputController = TextEditingController(text: value.toString());
+      textInputController = TextEditingController(text: value.toString());
       input = TextField(
         controller: textInputController,
       );
@@ -116,13 +116,13 @@ class LectureManagement extends GetView<LectureManagementController> {
               isFixedHeader: true,
               headerWidgets: columns,
               leftSideItemBuilder: (context, index) =>
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].lectureId, 100)),
+                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.lectureId, 100)),
               rightSideItemBuilder: (context, index) => Row(
                 children: [
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].level, 50)),
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].title, 400)),
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].description, 400)),
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].pic, 100)),
+                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.level, 50)),
+                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.title, 400)),
+                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.description, 400)),
+                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.pic, 100)),
                   Container(
                     width: 100,
                     height: 60,

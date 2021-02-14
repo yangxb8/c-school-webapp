@@ -18,31 +18,31 @@ class LectureService extends GetxService {
   static final ApiService _apiService = Get.find();
 
   /// All classes available
-  static RxList<Lecture> allLecturesObx;
+  static RxList<Rx<Lecture>> allLecturesObx;
 
   /// All words available
-  static RxList<Word> allWordsObx;
+  static RxList<Rx<Word>> allWordsObx;
 
   /// All exams available
-  static RxList<Exam> allExamsObx;
+  static RxList<Rx<Exam>> allExamsObx;
 
   static Future<LectureService> getInstance() async {
     if (_instance == null) {
       _instance = LectureService();
 
       /// All available Lectures
-      allLecturesObx = (await _apiService.firestoreApi.fetchLectures()).obs;
+      allLecturesObx =
+          (await _apiService.firestoreApi.fetchLectures()).map((e) => e.obs).toList().obs;
 
       /// All available words
-      allWordsObx = (await _apiService.firestoreApi.fetchWords()).obs;
+      allWordsObx = (await _apiService.firestoreApi.fetchWords()).map((e) => e.obs).toList().obs;
 
       /// All available exams
-      allExamsObx = (await _apiService.firestoreApi.fetchExams()).obs;
+      allExamsObx = (await _apiService.firestoreApi.fetchExams()).map((e) => e.obs).toList().obs;
     }
 
     return _instance;
   }
-
 
   List<Word> findWordsByConditions({WordMemoryStatus wordMemoryStatus, String lectureId}) {
     if (wordMemoryStatus == null && lectureId == null) {
@@ -67,7 +67,10 @@ class LectureService extends GetxService {
     if (ids.isBlank) {
       return [];
     } else {
-      return allWordsObx.filter((word) => ids.contains(word.wordId)).toList();
+      return allWordsObx
+          .filter((word) => ids.contains(word.value.wordId))
+          .map((e) => e.value)
+          .toList();
     }
   }
 
@@ -75,7 +78,10 @@ class LectureService extends GetxService {
     if (tags.isBlank) {
       return [];
     } else {
-      return allWordsObx.filter((word) => tags.every((tag) => word.tags.contains(tag))).toList();
+      return allWordsObx
+          .filter((word) => tags.every((tag) => word.value.tags.contains(tag)))
+          .map((e) => e.value)
+          .toList();
     }
   }
 
@@ -83,7 +89,10 @@ class LectureService extends GetxService {
     if (tags.isBlank) {
       return [];
     } else {
-      return allExamsObx.filter((exam) => tags.every((tag) => exam.tags.contains(tag))).toList();
+      return allExamsObx
+          .filter((exam) => tags.every((tag) => exam.value.tags.contains(tag)))
+          .map((e) => e.value)
+          .toList();
     }
   }
 
@@ -91,7 +100,7 @@ class LectureService extends GetxService {
     if (id.isBlank) {
       return null;
     } else {
-      return allExamsObx.filter((exam) => id == exam.examId).single;
+      return allExamsObx.filter((exam) => id == exam.value.examId).map((e) => e.value).single;
     }
   }
 
@@ -99,7 +108,10 @@ class LectureService extends GetxService {
     if (id.isBlank) {
       return null;
     } else {
-      return allLecturesObx.filter((lecture) => id == lecture.lectureId).single;
+      return allLecturesObx
+          .filter((lecture) => id == lecture.value.lectureId)
+          .map((e) => e.value)
+          .single;
     }
   }
 
@@ -108,9 +120,9 @@ class LectureService extends GetxService {
       return [];
     } else {
       return allLecturesObx
-          .filter((lecture) => tags.every((tag) => lecture.tags.contains(tag)))
+          .filter((lecture) => tags.every((tag) => lecture.value.tags.contains(tag)))
+          .map((e) => e.value)
           .toList();
     }
   }
-
 }
