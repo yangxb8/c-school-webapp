@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cschool_webapp/model/lecture.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flutter/material.dart';
@@ -12,84 +13,98 @@ import 'package:get/get.dart';
 import 'ui_view/webapp_drawer.dart';
 
 class LectureManagement extends GetView<LectureManagementController> {
-  Widget buildTitle(String title, double width, [double height = 100]) => Container(
+  static const defaultHeight = 100.0;
+  Widget buildTitle(String title, double width,
+          [double height = defaultHeight]) =>
+      Container(
         width: 100,
         alignment: Alignment.centerLeft,
         height: height,
         child: Text(title),
       );
 
-  Widget buildEditableCell(dynamic value, double width) {
-    Widget origin;
-    Widget input;
-    TextEditingController textInputController;
-    File uploadedFile;
+  Widget buildEditableCell(
+      {@required int index, @required String name, @required double width}) {
+    Rx<Lecture> lecture = controller.allLecturesObx[index];
 
-    if (value is String) {
-      origin = buildTitle(value, width);
-    } else if (value is num) {
-      origin = buildTitle(value.toString(), width);
-    } else if (value is StorageFile) {
-      if ([mimeTypeJpeg, mimeTypePng].contains(value.mimeType)) {
-        origin = CachedNetworkImage(
-          width: 100,
-          fit: BoxFit.cover,
-          httpHeaders: {
-            "Access-Control-Allow-Headers": "Content-Type",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-          },
-          imageUrl: value.url,
-        );
-      }
-    }
-    if (value is String || value is num) {
-      textInputController = TextEditingController(text: value.toString());
-      input = TextField(
-        controller: textInputController,
-      );
-    } else if (value is StorageFile) {
-      input = IconButton(
-          icon: Icon(Icons.cloud_upload),
-          onPressed: () async {
-            FilePickerResult result = await FilePicker.platform.pickFiles();
-            if (result != null) {
-              uploadedFile = File(result.files.single.path);
-            }
-          });
-    }
-    return GestureDetector(
-      child: origin,
-      onTap: () => Get.dialog(AlertDialog(
-        title: Text('变更内容'),
-        content: Column(
-          children: [Text('变更前:'), origin, Text('变更后:'), input],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () {
-                if (textInputController != null) {
-                  textInputController.dispose();
-                }
-                Get.back();
+    return ObxValue(
+      (lecture) {
+        var value = lecture.value.properties[name];
+        Widget origin;
+        Widget input;
+        TextEditingController textInputController;
+        File uploadedFile;
+
+        if (value is String) {
+          origin = buildTitle(value, width);
+        } else if (value is num) {
+          origin = buildTitle(value.toString(), width);
+        } else if (value is StorageFile) {
+          if ([mimeTypeJpeg, mimeTypePng].contains(value.mimeType)) {
+            origin = CachedNetworkImage(
+              width: width,
+              fit: BoxFit.cover,
+              httpHeaders: {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
               },
-              child: Text('取消')),
-          TextButton(
+              imageUrl: value.url,
+            );
+          }
+        }
+        if (value is String || value is num) {
+          textInputController = TextEditingController(text: value.toString());
+          input = TextField(
+            controller: textInputController,
+          );
+        } else if (value is StorageFile) {
+          input = IconButton(
+              icon: Icon(Icons.cloud_upload),
               onPressed: () async {
-                if ((value is String || value is num) && value != textInputController.text) {
-                  await controller.handlerValueChange(
-                      origin: value, updated: textInputController.text);
-                } else if (value is StorageFile) {
-                  await controller.handlerValueChange(origin: value, updated: uploadedFile);
+                FilePickerResult result = await FilePicker.platform.pickFiles();
+                if (result != null) {
+                  uploadedFile = File(result.files.single.path);
                 }
-                if (textInputController != null) {
-                  textInputController.dispose();
-                }
-                Get.back();
-              },
-              child: Text('变更')),
-        ],
-      )),
+              });
+        }
+        return GestureDetector(
+        child: SizedBox(width: width, height: defaultHeight, child: origin),
+        onTap: () => Get.dialog(AlertDialog(
+          title: Text('变更内容'),
+          content: Column(
+            children: [Text('变更前:'), origin, Text('变更后:'), input],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () {
+                  // if (textInputController != null) {
+                  //   textInputController.dispose();
+                  // }
+                  Get.back();
+                },
+                child: Text('取消')),
+            TextButton(
+                onPressed: () async {
+                  if ((value is String || value is num) &&
+                      value.toString() != textInputController.text) {
+                    await controller.handlerValueChange(
+                        lecture: lecture,
+                        name: name,
+                        updated: textInputController.text);
+                  } else if (value is StorageFile) {
+                    await controller.handlerValueChange(
+                        lecture: lecture, name: name, updated: uploadedFile);
+                  }
+                  // if (textInputController != null) {
+                  //   textInputController.dispose();
+                  // }
+                  Get.back();
+                },
+                child: Text('变更')),
+          ],
+        )),
+      );},lecture
     );
   }
 
@@ -101,35 +116,45 @@ class LectureManagement extends GetView<LectureManagementController> {
       buildTitle('课程标题', 400),
       buildTitle('课程描述', 400),
       buildTitle('课程图片', 100),
+      buildTitle('标签', 400),
       buildTitle('插入删除', 100),
     ];
     return Scaffold(
-      appBar: AppBar(title: Text('课程管理'),),
+      appBar: AppBar(
+        title: Text('课程管理'),
+      ),
       drawer: const CSchoolWebAppDrawer(),
       body: Container(
           alignment: Alignment.topCenter,
           child: Obx(
             () => HorizontalDataTable(
               leftHandSideColumnWidth: 100,
-              rightHandSideColumnWidth: 1100,
+              rightHandSideColumnWidth: 1500,
               itemCount: controller.allLecturesObx.length,
               isFixedHeader: true,
               headerWidgets: columns,
-              leftSideItemBuilder: (context, index) =>
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.lectureId, 100)),
+              leftSideItemBuilder: (context, index) => Obx(() =>
+                  buildEditableCell(
+                      index: index, name: 'lectureId', width: 100)),
               rightSideItemBuilder: (context, index) => Row(
                 children: [
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.level, 50)),
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.title, 400)),
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.description, 400)),
-                  Obx(() => buildEditableCell(controller.allLecturesObx[index].value.pic, 100)),
+                  buildEditableCell(
+                      index: index, name: 'level', width: 50),
+                  buildEditableCell(
+                      index: index, name: 'title', width: 400),
+                  buildEditableCell(
+                      index: index, name: 'description', width: 400),
+                  buildEditableCell(index: index, name: 'pic', width: 100),
+                  buildEditableCell(
+                      index: index, name: 'tags', width: 400),
                   Container(
                     width: 100,
-                    height: 60,
                     alignment: Alignment.center,
                     child: Row(
                       children: [
-                        IconButton(icon: Icon(Icons.add), onPressed: () => controller.addRow(index)),
+                        IconButton(
+                            icon: Icon(Icons.add),
+                            onPressed: () => controller.addRow(index)),
                         IconButton(
                             icon: Icon(Icons.indeterminate_check_box_outlined),
                             onPressed: () => controller.deleteRow(index)),
