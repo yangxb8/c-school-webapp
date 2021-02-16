@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cschool_webapp/model/lecture.dart';
@@ -6,11 +6,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flutter/material.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../controller/lecture_management_controller.dart';
 import 'package:get/get.dart';
 
 import 'ui_view/webapp_drawer.dart';
+import '../util/utility.dart';
 
 class LectureManagement extends GetView<LectureManagementController> {
   static const defaultHeight = 100.0;
@@ -27,21 +29,22 @@ class LectureManagement extends GetView<LectureManagementController> {
       {@required int index, @required String name, @required double width}) {
     Rx<Lecture> lecture = controller.allLecturesObx[index];
 
-    return ObxValue(
-      (lecture) {
-        var value = lecture.value.properties[name];
-        Widget origin;
-        Widget input;
-        TextEditingController textInputController;
-        File uploadedFile;
+    return ObxValue((Rx<Lecture> lecture) {
+      var value = lecture.value.properties[name];
+      Widget origin;
+      Widget input;
+      TextEditingController textInputController;
+      Uint8List uploadedFile;
 
-        if (value is String) {
-          origin = buildTitle(value, width);
-        } else if (value is num) {
-          origin = buildTitle(value.toString(), width);
-        } else if (value is StorageFile) {
-          if ([mimeTypeJpeg, mimeTypePng].contains(value.mimeType)) {
-            origin = CachedNetworkImage(
+      if (value is String) {
+        origin = Obx(() => buildTitle(lecture.value.properties[name], width));
+      } else if (value is num) {
+        origin = Obx(
+            () => buildTitle(lecture.value.properties[name].toString(), width));
+      } else if (value is StorageFile) {
+        if ([mimeTypeJpeg, mimeTypePng].contains(value.mimeType)) {
+          origin = Obx(
+            () => CachedNetworkImage(
               width: width,
               fit: BoxFit.cover,
               httpHeaders: {
@@ -49,26 +52,28 @@ class LectureManagement extends GetView<LectureManagementController> {
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
               },
-              imageUrl: value.url,
-            );
-          }
-        }
-        if (value is String || value is num) {
-          textInputController = TextEditingController(text: value.toString());
-          input = TextField(
-            controller: textInputController,
+              imageUrl: lecture.value.properties[name].url,
+            ),
           );
-        } else if (value is StorageFile) {
-          input = IconButton(
-              icon: Icon(Icons.cloud_upload),
-              onPressed: () async {
-                FilePickerResult result = await FilePicker.platform.pickFiles();
-                if (result != null) {
-                  uploadedFile = File(result.files.single.path);
-                }
-              });
         }
-        return GestureDetector(
+      }
+      if (value is String || value is num) {
+        textInputController = TextEditingController(text: value.toString());
+        input = TextField(
+          controller: textInputController,
+        );
+      } else if (value is StorageFile) {
+        input = IconButton(
+            icon: Icon(Icons.cloud_upload),
+            onPressed: () async {
+              FilePickerResult result =
+                  await FilePicker.platform.pickFiles(type: FileType.image);
+              if (result != null) {
+                uploadedFile = result.files.single.bytes;
+              }
+            });
+      }
+      return GestureDetector(
         child: SizedBox(width: width, height: defaultHeight, child: origin),
         onTap: () => Get.dialog(AlertDialog(
           title: Text('变更内容'),
@@ -104,8 +109,8 @@ class LectureManagement extends GetView<LectureManagementController> {
                 child: Text('变更')),
           ],
         )),
-      );},lecture
-    );
+      );
+    }, lecture);
   }
 
   @override
@@ -126,44 +131,77 @@ class LectureManagement extends GetView<LectureManagementController> {
       drawer: const CSchoolWebAppDrawer(),
       body: Container(
           alignment: Alignment.topCenter,
-          child: Obx(
-            () => HorizontalDataTable(
-              leftHandSideColumnWidth: 100,
-              rightHandSideColumnWidth: 1500,
-              itemCount: controller.allLecturesObx.length,
-              isFixedHeader: true,
-              headerWidgets: columns,
-              leftSideItemBuilder: (context, index) => Obx(() =>
-                  buildEditableCell(
-                      index: index, name: 'lectureId', width: 100)),
-              rightSideItemBuilder: (context, index) => Row(
-                children: [
-                  buildEditableCell(
-                      index: index, name: 'level', width: 50),
-                  buildEditableCell(
-                      index: index, name: 'title', width: 400),
-                  buildEditableCell(
-                      index: index, name: 'description', width: 400),
-                  buildEditableCell(index: index, name: 'pic', width: 100),
-                  buildEditableCell(
-                      index: index, name: 'tags', width: 400),
-                  Container(
-                    width: 100,
-                    alignment: Alignment.center,
-                    child: Row(
-                      children: [
-                        IconButton(
-                            icon: Icon(Icons.add),
-                            onPressed: () => controller.addRow(index)),
-                        IconButton(
-                            icon: Icon(Icons.indeterminate_check_box_outlined),
-                            onPressed: () => controller.deleteRow(index)),
-                      ],
-                    ),
-                  )
-                ],
+          child: Column(
+            children: [
+              Obx(
+                () => HorizontalDataTable(
+                  leftHandSideColumnWidth: 100,
+                  rightHandSideColumnWidth: 1500,
+                  itemCount: controller.allLecturesObx.length,
+                  isFixedHeader: true,
+                  headerWidgets: columns,
+                  leftSideItemBuilder: (context, index) => Obx(() =>
+                      buildEditableCell(
+                          index: index, name: 'lectureId', width: 100)),
+                  rightSideItemBuilder: (context, index) => Row(
+                    children: [
+                      buildEditableCell(index: index, name: 'level', width: 50),
+                      buildEditableCell(
+                          index: index, name: 'title', width: 400),
+                      buildEditableCell(
+                          index: index, name: 'description', width: 400),
+                      buildEditableCell(index: index, name: 'pic', width: 100),
+                      buildEditableCell(index: index, name: 'tags', width: 400),
+                      Container(
+                        width: 100,
+                        alignment: Alignment.center,
+                        child: Row(
+                          children: [
+                            IconButton(
+                                icon: Icon(Icons.add),
+                                onPressed: () => controller.addRow(index)),
+                            IconButton(
+                                icon: Icon(
+                                    Icons.indeterminate_check_box_outlined),
+                                onPressed: () => controller.deleteRow(index)),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
               ),
-            ),
+              IconButton(
+                  icon: Icon(Icons.cloud_upload),
+                  onPressed: () => Get.dialog(ValueBuilder<PlatformFile>(
+                        builder: (uploadedFile, updateFn) => AlertDialog(
+                            title: Text('上传课程'),
+                            content: IconButton(
+                                icon: Icon(Icons.cloud_upload),
+                                onPressed: () async {
+                                  FilePickerResult result = await FilePicker
+                                      .platform
+                                      .pickFiles(allowedExtensions: ['zip']);
+                                  uploadedFile = result.files.single;
+                                }).center(),
+                            actions: uploadedFile == null
+                                ? []
+                                : [
+                                    TextButton(
+                                        onPressed: () {
+                                          Get.back();
+                                        },
+                                        child: Text('取消')),
+                                    TextButton(
+                                        onPressed: () async {
+                                            await controller
+                                                .handleLectureUpload(uploadedFile.bytes);
+                                          Get.back();
+                                        },
+                                        child: Text('上传')),
+                                  ]),
+                      ))).center()
+            ],
           )),
     );
   }
