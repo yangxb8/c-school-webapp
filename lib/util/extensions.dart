@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 // 📦 Package imports:
 import 'package:fuzzy/fuzzy.dart';
-import 'package:get/get.dart';
 
 // 🌎 Project imports:
 import 'classes.dart';

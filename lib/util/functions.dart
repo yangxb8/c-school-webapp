@@ -3,14 +3,10 @@ import 'dart:io';
 
 // 🐦 Flutter imports:
 import 'package:flutter/services.dart';
-import 'package:supercharged/supercharged.dart';
 
 // 📦 Package imports:
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-
-import '../model/lecture.dart';
-import '../model/word.dart';
 
 /// Read asset from assets/ and write to temp file, return the file
 Future<File> createFileFromAssets(String path) async {

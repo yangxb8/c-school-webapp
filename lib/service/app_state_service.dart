@@ -1,6 +1,3 @@
-// 📦 Package imports:
-import 'package:get/get.dart';
-
 /*
 * This class provide AppState from firebase/shared_preference/others
 * It should not expose inner service(_localStorageService etc.) usage!!!

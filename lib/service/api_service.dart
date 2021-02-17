@@ -53,7 +53,6 @@ class _FirebaseAuthApi {
   static _FirebaseAuthApi _instance;
   static bool _isFirebaseAuthInitilized = false;
   static FirebaseAuth _firebaseAuth;
-  static final _FirestoreApi _firestoreApi = _FirestoreApi.getInstance();
 
   static _FirebaseAuthApi getInstance() {
     _instance ??= _FirebaseAuthApi();
@@ -70,37 +69,6 @@ class _FirebaseAuthApi {
 
   void listenToFirebaseAuth(Function func) {
     _firebaseAuth.authStateChanges().listen((_) async => await func());
-  }
-
-  // Already return fromm every conditions
-  // ignore: missing_return
-  Future<String> signUpWithEmail(
-      String email, String password, String nickname) async {
-    try {
-      var userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-      // Email verify by showing popup on provided context
-      _firestoreApi._registerAppUser(
-          firebaseUser: userCredential.user, nickname: nickname);
-      if (!userCredential.user.emailVerified) {
-        await sendVerifyEmail();
-        return 'need email verify';
-      }
-      logger.d(email, 'User registered:');
-      return 'ok';
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        return 'The account already exists for that email.';
-      }
-    } catch (e) {
-      logger.e(e);
-      return 'Unexpected internal error occurs';
-    }
-  }
-
-  Future<void> sendVerifyEmail() async {
-    await currentUser.reload();
-    await currentUser.sendEmailVerification();
   }
 
   // Already return fromm every conditions
@@ -129,7 +97,6 @@ class _FirebaseAuthApi {
 class _FirestoreApi {
   static const extension_audio = 'mp3';
   static const extension_image = 'jpg';
-  static const extension_json = 'json';
   static _FirestoreApi _instance;
   static FirebaseFirestore _firestore;
   static DocumentAccessor _documentAccessor;
@@ -147,14 +114,6 @@ class _FirestoreApi {
     }
 
     return _instance;
-  }
-
-  void _registerAppUser(
-      {@required User firebaseUser, @required String nickname}) {
-    if (firebaseUser.isAnonymous) return;
-    var appUser = AppUser(id: firebaseUser.uid);
-    appUser.nickName = nickname;
-    _documentAccessor.save(appUser).catchError((e) => logger.e(e.printError()));
   }
 
   Future<AppUser> fetchAppUser({User firebaseUser}) async {
@@ -474,6 +433,15 @@ class _FirestoreApi {
       decode: (snap) => Lecture(snapshot: snap),
     );
     return await collectionPaging.load();
+  }
+
+  Future<void> commitBatch(Set<Map<String, Rx<Lecture>>> batchSet) async{
+    batchSet.forEach((element) {
+      final action = element.keys.single;
+      final lecture = element.values.single.value;
+      _batch.actions[action](lecture);
+    });
+    await _batch.commit();
   }
 
 }

@@ -45,3 +45,11 @@ extension StorageExtension on Storage{
   }
 
 }
+
+extension BatchExtension on Batch{
+  Map<String, Function> get actions => {
+    'save': save,
+    'update': update,
+    'delete': delete
+  };
+}

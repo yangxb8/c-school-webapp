@@ -1,10 +1,8 @@
 import 'package:cschool_webapp/controller/lecture_management_controller.dart';
 import 'package:cschool_webapp/view/lecture_management.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'controller/home_controller.dart';
-import 'service/user_service.dart';
 import 'view/home.dart';
 
 class AppRouter {
