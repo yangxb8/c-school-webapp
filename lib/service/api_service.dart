@@ -1,5 +1,6 @@
 // 🎯 Dart imports:
 import 'dart:async';
+import 'dart:typed_data';
 
 // 📦 Package imports:
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,7 +22,7 @@ import '../model/speech_exam.dart';
 import '../model/user.dart';
 import '../model/word.dart';
 import '../model/word_meaning.dart';
-import '../util/functions.dart';
+import '../util/utility.dart';
 
 final logger = LoggerService.logger;
 
@@ -52,7 +53,6 @@ class _FirebaseAuthApi {
   static _FirebaseAuthApi _instance;
   static bool _isFirebaseAuthInitilized = false;
   static FirebaseAuth _firebaseAuth;
-  static final _FirestoreApi _firestoreApi = _FirestoreApi.getInstance();
 
   static _FirebaseAuthApi getInstance() {
     _instance ??= _FirebaseAuthApi();
@@ -69,37 +69,6 @@ class _FirebaseAuthApi {
 
   void listenToFirebaseAuth(Function func) {
     _firebaseAuth.authStateChanges().listen((_) async => await func());
-  }
-
-  // Already return fromm every conditions
-  // ignore: missing_return
-  Future<String> signUpWithEmail(
-      String email, String password, String nickname) async {
-    try {
-      var userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-      // Email verify by showing popup on provided context
-      _firestoreApi._registerAppUser(
-          firebaseUser: userCredential.user, nickname: nickname);
-      if (!userCredential.user.emailVerified) {
-        await sendVerifyEmail();
-        return 'need email verify';
-      }
-      logger.d(email, 'User registered:');
-      return 'ok';
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        return 'The account already exists for that email.';
-      }
-    } catch (e) {
-      logger.e(e);
-      return 'Unexpected internal error occurs';
-    }
-  }
-
-  Future<void> sendVerifyEmail() async {
-    await currentUser.reload();
-    await currentUser.sendEmailVerification();
   }
 
   // Already return fromm every conditions
@@ -128,30 +97,23 @@ class _FirebaseAuthApi {
 class _FirestoreApi {
   static const extension_audio = 'mp3';
   static const extension_image = 'jpg';
-  static const extension_json = 'json';
   static _FirestoreApi _instance;
   static FirebaseFirestore _firestore;
   static DocumentAccessor _documentAccessor;
+  static Batch _batch;
   static User _currentUser;
 
   static _FirestoreApi getInstance() {
     if (_instance == null) {
       _instance = _FirestoreApi();
-      _firestore = FirebaseFirestore.instance;
       _documentAccessor = DocumentAccessor();
+      _firestore = FirebaseFirestore.instance;
+      _batch = Batch();
       // _setupEmulator(); //TODO: Uncomment this to use firestore simulator
       _currentUser = _FirebaseAuthApi().currentUser;
     }
 
     return _instance;
-  }
-
-  void _registerAppUser(
-      {@required User firebaseUser, @required String nickname}) {
-    if (firebaseUser.isAnonymous) return;
-    var appUser = AppUser(id: firebaseUser.uid);
-    appUser.nickName = nickname;
-    _documentAccessor.save(appUser).catchError((e) => logger.e(e.printError()));
   }
 
   Future<AppUser> fetchAppUser({User firebaseUser}) async {
@@ -319,8 +281,9 @@ class _FirestoreApi {
       });
 
       // Finally, save the word
-      await _documentAccessor.save(word);
+      _batch.save(word);
     });
+    await _batch.commit();
 
 // Checking status
     storage.uploader.listen((data) {
@@ -331,7 +294,7 @@ class _FirestoreApi {
     storage.dispose();
   }
 
-  void uploadLecturesByCsv() async {
+  Future<void> uploadLecturesByCsv({@required String csv, @required Map<String, Uint8List> assets}) async {
     final columnId = 0;
     final columnLevel = 1;
     final columnTitle = 2;
@@ -342,13 +305,12 @@ class _FirestoreApi {
     final processStatusModified = 1;
 
     final storage = Storage()..fetch();
-    final documentAccessor = DocumentAccessor();
 
     // Build Word from csv
     var csv;
     try {
       csv = CsvToListConverter()
-          .convert(await rootBundle.loadString('assets/upload/lectures.csv'))
+          .convert(csv)
             ..removeWhere((w) =>
                 ![processStatusNew, processStatusModified]
                     .contains(w[columnProcessStatus]) ||
@@ -364,20 +326,15 @@ class _FirestoreApi {
           ..description = row[columnDescription]?.trim()
           ..picHash = row[columnPicHash]?.trim());
 
-    // Checking status
-    storage.uploader.listen((data) {
-      print('total: ${data.totalBytes} transferred: ${data.bytesTransferred}');
-    });
     // Upload file to cloud storage and save reference
     await lectures.forEach((lecture) async {
       // Word image
       final pathClassPic =
           '${lecture.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
       try {
-        final lecturePic = await createFileFromAssets(
-            'upload/${lecture.lectureId}.${extension_image}');
-        lecture.pic = await storage.save(pathClassPic, lecturePic,
-            filename: '${lecture.lectureId}.${extension_image}',
+        final lecturePic = assets['${lecture.lectureId}.$extension_image'];
+        lecture.pic = await storage.saveFromBytes(pathClassPic, lecturePic,
+            filename: '${lecture.lectureId}.$extension_image',
             mimeType: mimeTypeJpeg,
             metadata: {'newPost': 'true'});
       } catch (e, _) {
@@ -385,10 +342,11 @@ class _FirestoreApi {
       }
 
       // Finally, save the word
-      await documentAccessor.save(lecture);
+      _batch.save(lecture);
     });
+    await _batch.commit();
 
-// Dispose uploader stream
+    // Dispose uploader stream
     storage.dispose();
   }
 
@@ -401,7 +359,6 @@ class _FirestoreApi {
     final process_status_new = 0;
 
     final storage = Storage()..fetch();
-    final documentAccessor = DocumentAccessor();
 
     // Build Word from csv
     var csv;
@@ -442,8 +399,9 @@ class _FirestoreApi {
       }
 
       // Finally, save the word
-      await documentAccessor.save(exam);
+      _batch.save(exam);
     });
+    await _batch.commit();
 
 // Dispose uploader stream
     storage.dispose();
@@ -475,6 +433,15 @@ class _FirestoreApi {
       decode: (snap) => Lecture(snapshot: snap),
     );
     return await collectionPaging.load();
+  }
+
+  Future<void> commitBatch(Set<Map<String, Rx<Lecture>>> batchSet) async{
+    batchSet.forEach((element) {
+      final action = element.keys.single;
+      final lecture = element.values.single.value;
+      _batch.actions[action](lecture);
+    });
+    await _batch.commit();
   }
 
 }

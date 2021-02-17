@@ -52,6 +52,7 @@ dependencies:
   horizontal_data_table: ^2.2.0
   cached_network_image: ^2.5.0
   file_picker: ^2.1.6
+  archive: ^2.0.13
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

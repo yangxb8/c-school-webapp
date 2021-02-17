@@ -75,4 +75,5 @@ class Lecture extends Document<Lecture> implements Searchable{
     'level': level.toString(),
     'tags': tags,
   };
+
 }
