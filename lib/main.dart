@@ -54,7 +54,6 @@ class CSchoolWebApp extends StatelessWidget {
 
 Future<void> initServices() async {
   await Get.putAsync<ApiService>(() async => await ApiService.getInstance());
-  await Flamingo.initializeApp();
   await Get.putAsync<UserService>(() async => await UserService.getInstance());
   Get.lazyPut<AudioService>(() => AudioService());
   await Get.find<ApiService>().firebaseAuthApi.loginWithEmail('yangxb10@gmail.com','199141');

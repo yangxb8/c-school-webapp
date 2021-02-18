@@ -37,6 +37,7 @@ class ApiService extends GetxService {
 
     if (!_isFirebaseInitilized) {
       await Firebase.initializeApp();
+      await Flamingo.initializeApp();
       _firebaseAuthApi = _FirebaseAuthApi.getInstance();
       _firestoreApi = _FirestoreApi.getInstance();
       _isFirebaseInitilized = true;
