@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:blurhash/blurhash.dart';
 import 'package:cschool_webapp/model/lecture.dart';
 import 'package:cschool_webapp/service/api_service.dart';
 import 'package:supercharged/supercharged.dart';
@@ -21,17 +22,24 @@ class LectureManagementController extends GetxController {
   final storage = Storage()..fetch();
 
   /// A set to store changed made to list
-  final Set<Map<String, Rx<Lecture>>> batchSet = <Map<String, Rx<Lecture>>>{};
+  final RxSet<Map<String, Rx<Lecture>>> batchSet = <Map<String, Rx<Lecture>>>{}.obs;
   RxList<Rx<Lecture>> allLecturesObx;
+
+  /// backup for restore data
+  List<Lecture> _backup;
 
   @override
   void onInit() {
     allLecturesObx = LectureService.allLecturesObx;
+    // A backup of initial state for restore changes
+    _backup = allLecturesObx.map((element) => element.value.copyWith()).toList();
     // Worker to monitor each lecture change. This only works for existed
     // Lecture, so if you add a new lecture and modify it, it will not be
     // handled by worker, manually add it to the set.
-    allLecturesObx.forEach(
-        (lecture) => once(lecture, (_) => batchSet.add({'update': lecture})));
+    allLecturesObx.forEach((lecture) => ever<Lecture>(lecture, (val) {
+          logger.d('$lecture is updated to ${val.properties}');
+          batchSet.add({'update': lecture});
+        }));
     super.onInit();
   }
 
@@ -68,9 +76,7 @@ class LectureManagementController extends GetxController {
   }
 
   Future<void> handlerValueChange(
-      {@required Rx<Lecture> lecture,
-      @required String name,
-      @required dynamic updated}) async {
+      {@required Rx<Lecture> lecture, @required String name, @required dynamic updated}) async {
     // If lectureId is changed, move the row
     if (name == 'lectureId' && updated is String) {
       moveRow(lecture.value.lectureId, updated);
@@ -78,19 +84,23 @@ class LectureManagementController extends GetxController {
     }
     var origin = lecture.value.properties[name];
     if (origin is String && updated is String) {
-      lecture.update((val) => val.properties[name] = updated);
+      _updateProperties(lecture: lecture, property: name, newVal: updated);
+    } else if (origin is List<String> && updated is String) {
+      // tags
+      _updateProperties(lecture: lecture, property: name, newVal: updated.split('/'));
     } else if (origin is int && updated is String) {
-      lecture.update((val) => val.properties[name] = int.parse(updated));
+      _updateProperties(lecture: lecture, property: name, newVal: int.parse(updated));
     } else if (origin is StorageFile && updated is Uint8List) {
+      var storageFile;
       try {
-        lecture.update((val) async => val.properties[name] = await storage
-            .saveFromBytes(origin.path, updated,
-                filename: origin.name,
-                mimeType: origin.mimeType,
-                metadata: {'newPost': 'true'}));
+        storageFile = await storage.saveFromBytes(origin.path, updated,
+            filename: origin.name, mimeType: origin.mimeType, metadata: {'newPost': 'true'});
       } catch (e, _) {
         LoggerService.logger.i(e);
       }
+      _updateProperties(lecture: lecture, property: name, newVal: storageFile);
+      final picHash = await BlurHash.encode(updated, 9, 9);
+      _updateProperties(lecture: lecture, property: 'picHash', newVal: picHash);
     }
   }
 
@@ -108,16 +118,50 @@ class LectureManagementController extends GetxController {
         assets[filename] = file.content as Uint8List;
       }
     }
-    await apiService
-        .firestoreApi
-        .uploadLecturesByCsv(csv: csvContent, assets: assets);
+    await apiService.firestoreApi.uploadLecturesByCsv(csv: csvContent, assets: assets);
+  }
+
+  void _updateProperties(
+      {@required Rx<Lecture> lecture, @required String property, @required dynamic newVal}) {
+    lecture.update((val) {
+      switch (property) {
+        case 'lectureId':
+          val.lectureId = newVal;
+          break;
+        case 'title':
+          val.title = newVal;
+          break;
+        case 'description':
+          val.description = newVal;
+          break;
+        case 'level':
+          val.level = newVal;
+          break;
+        case 'tags':
+          val.tags.assignAll(newVal);
+          break;
+        case 'pic':
+          val.pic = newVal;
+          break;
+        case 'picHash':
+          val.picHash = newVal;
+          break;
+      }
+    });
   }
 
   void saveChange() async => await apiService.firestoreApi.commitBatch(batchSet);
 
-  void cancelChange() => batchSet.clear();
+  void cancelChange() {
+    allLecturesObx.assignAll(_backup.map((e) => e.copyWith().obs));
+    // Reassign workers
+    allLecturesObx.forEach((lecture) => ever<Lecture>(lecture, (val) {
+          logger.d('$lecture is updated to ${val.properties}');
+          batchSet.add({'update': lecture});
+        }));
+    batchSet.clear();
+  }
 
-  bool isLectureInBatch(Rx<Lecture> lecture) =>
-    batchSet.any((element) => element.values.single == lecture);
-
+  bool isPropertyChanged(Rx<Lecture> lecture, String name) =>
+      batchSet.any((element) => element.values.single == lecture);
 }
