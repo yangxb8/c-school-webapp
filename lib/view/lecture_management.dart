@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cschool_webapp/model/lecture.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
@@ -13,7 +12,6 @@ import '../controller/lecture_management_controller.dart';
 import 'package:get/get.dart';
 
 import 'ui_view/webapp_drawer.dart';
-import '../util/utility.dart';
 
 class LectureManagement extends GetView<LectureManagementController> {
   static const defaultHeight = 100.0;
@@ -22,49 +20,38 @@ class LectureManagement extends GetView<LectureManagementController> {
         width: width,
         alignment: Alignment.center,
         height: defaultHeight,
-        child: Text(title ?? ' '),
+        child: Text(title ?? ''),
         color: color,
       );
 
   Widget buildCellContent(
       {@required Rx<Lecture> lecture, @required String name, @required double width}) {
-    var value = lecture.value.properties[name];
-    if (value is String) {
-      if (name == 'picHash') {
-        return Obx(() => Container(
-            width: width,
-            height: defaultHeight,
-            child: BlurHash(hash: lecture.value.properties[name], imageFit: BoxFit.cover)));
-      } else if (name == 'lectureId') {
-        return Obx(() => buildTitle(lecture.value.properties[name], width));
-      } else {
-        return Obx(() => buildTitle(lecture.value.properties[name], width));
-      }
-    } else if (value is List<String>) {
-      // tags
+    if (name == 'picHash') {
+      return Obx(() => Container(
+          width: width,
+          height: defaultHeight,
+          child: BlurHash(hash: lecture.value.properties[name], imageFit: BoxFit.cover)));
+    } else if (['title', 'description', 'lectureId', 'level'].contains(name)) {
+      return Obx(() => buildTitle(lecture.value.properties[name].toString(), width));
+    } else if (name == 'tags') {
       return Obx(() => buildTitle(
             lecture.value.properties[name].join('/'),
             width,
           ));
-    } else if (value is num) {
-      return Obx(() => buildTitle(lecture.value.properties[name].toString(), width));
-    } else if (value is StorageFile) {
-      if ([mimeTypeJpeg, mimeTypePng].contains(value.mimeType)) {
-        return Obx(
-          () => lecture.value.properties[name].url == null
-              ? const SizedBox.expand()
-              : CachedNetworkImage(
-                  width: width,
-                  fit: BoxFit.cover,
-                  httpHeaders: {
-                    'Access-Control-Allow-Headers': 'Content-Type',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-                  },
-                  imageUrl: lecture.value.properties[name].url,
-                ),
-        );
-      }
+    } else if (name == 'pic') {
+      return Obx(
+        () => lecture.value.properties[name]?.url == null
+            ? Container(
+                width: width,
+                height: defaultHeight,
+              )
+            : Image.memory(
+                controller.getCachedData(lecture, name),
+                width: width,
+                height: defaultHeight,
+                fit: BoxFit.cover,
+              ),
+      );
     }
     return null;
   }
@@ -81,15 +68,16 @@ class LectureManagement extends GetView<LectureManagementController> {
       return origin;
     }
     return GestureDetector(
-      child: SizedBox(width: width, height: defaultHeight, child: origin),
+      behavior: HitTestBehavior.opaque,
+      child: Container(width: width, height: defaultHeight, child: origin),
       onTap: () {
-        if (value is String || value is List<String> || value is num) {
+        if (['title', 'description', 'lectureId', 'level', 'tags'].contains(name)) {
           textInputController = TextEditingController(
               text: value is List<String> ? value.join('/') : value.toString());
           input = TextField(
             controller: textInputController,
           );
-        } else if (value is StorageFile) {
+        } else if (name == 'pic') {
           input = IconButton(
               icon: Icon(Icons.cloud_upload),
               onPressed: () async {
@@ -152,7 +140,7 @@ class LectureManagement extends GetView<LectureManagementController> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('课程管理').alignment(Alignment.center),
+          title: Text('课程管理').width(100),
           actions: [
             IconButton(
                 tooltip: '上传课程',
@@ -203,37 +191,40 @@ class LectureManagement extends GetView<LectureManagementController> {
         ),
         drawer: const CSchoolWebAppDrawer(),
         body: Obx(
-          () => HorizontalDataTable(
-            leftHandSideColumnWidth: 100,
-            rightHandSideColumnWidth: 1500,
-            itemCount: controller.allLecturesObx.length,
-            isFixedHeader: true,
-            headerWidgets: columns,
-            leftSideItemBuilder: (context, index) =>
-                Obx(() => buildEditableCell(index: index, name: 'lectureId', width: 100)),
-            rightSideItemBuilder: (context, index) => Row(
-              children: [
-                buildEditableCell(index: index, name: 'level', width: 50),
-                buildEditableCell(index: index, name: 'title', width: 200),
-                buildEditableCell(index: index, name: 'description', width: 200),
-                buildEditableCell(index: index, name: 'pic', width: 100),
-                buildEditableCell(index: index, name: 'picHash', width: 100),
-                buildEditableCell(index: index, name: 'tags', width: 200),
-                Container(
-                  width: 100,
-                  alignment: Alignment.center,
-                  child: Row(
+          () => controller.loading.isTrue
+              ? CircularProgressIndicator().center()
+              : HorizontalDataTable(
+                  leftHandSideColumnWidth: 100,
+                  rightHandSideColumnWidth: 1500,
+                  itemCount: controller.allLecturesObx.length,
+                  isFixedHeader: true,
+                  headerWidgets: columns,
+                  leftSideItemBuilder: (context, index) =>
+                      Obx(() => buildEditableCell(index: index, name: 'lectureId', width: 100)),
+                  rightSideItemBuilder: (context, index) => Row(
                     children: [
-                      IconButton(icon: Icon(Icons.add), onPressed: () => controller.addRow(index)),
-                      IconButton(
-                          icon: Icon(Icons.indeterminate_check_box_outlined),
-                          onPressed: () => controller.deleteRow(index)),
+                      buildEditableCell(index: index, name: 'level', width: 50),
+                      buildEditableCell(index: index, name: 'title', width: 200),
+                      buildEditableCell(index: index, name: 'description', width: 200),
+                      buildEditableCell(index: index, name: 'pic', width: 100),
+                      buildEditableCell(index: index, name: 'picHash', width: 100),
+                      buildEditableCell(index: index, name: 'tags', width: 200),
+                      Container(
+                        width: 100,
+                        alignment: Alignment.center,
+                        child: Row(
+                          children: [
+                            IconButton(
+                                icon: Icon(Icons.add), onPressed: () => controller.addRow(index)),
+                            IconButton(
+                                icon: Icon(Icons.indeterminate_check_box_outlined),
+                                onPressed: () => controller.deleteRow(index)),
+                          ],
+                        ),
+                      )
                     ],
                   ),
-                )
-              ],
-            ),
-          ),
+                ),
         ),
       ),
     );

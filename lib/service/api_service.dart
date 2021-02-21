@@ -76,8 +76,8 @@ class _FirebaseAuthApi {
   // ignore: missing_return
   Future<String> loginWithEmail(String email, String password) async {
     try {
-      var userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
+      var userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
       if (!userCredential.user.emailVerified) {
         return 'Please verify your email.';
       }
@@ -101,6 +101,7 @@ class _FirestoreApi {
   static _FirestoreApi _instance;
   static FirebaseFirestore _firestore;
   static DocumentAccessor _documentAccessor;
+  static Storage _storage;
   static Batch _batch;
   static User _currentUser;
 
@@ -109,6 +110,7 @@ class _FirestoreApi {
       _instance = _FirestoreApi();
       _documentAccessor = DocumentAccessor();
       _firestore = FirebaseFirestore.instance;
+      _storage = Storage()..fetch();
       _batch = Batch();
       // _setupEmulator(); //TODO: Uncomment this to use firestore simulator
       _currentUser = _FirebaseAuthApi().currentUser;
@@ -123,11 +125,9 @@ class _FirestoreApi {
       logger.e('fetchAppUser was called on null firebaseUser');
       return null;
     }
-    var user =
-        await _documentAccessor.load<AppUser>(AppUser(id: firebaseUser.uid));
+    var user = await _documentAccessor.load<AppUser>(AppUser(id: firebaseUser.uid));
     if (user == null) {
-      logger.e(
-          'user ${firebaseUser.uid} not found in firestore, return empty user');
+      logger.e('user ${firebaseUser.uid} not found in firestore, return empty user');
       return AppUser();
     } else {
       user.firebaseUser = firebaseUser;
@@ -141,35 +141,51 @@ class _FirestoreApi {
     _documentAccessor.update(appUserForUpdate).then((_) => refreshAppUser());
   }
 
+  /// Upload a single file and return the reference
+  Future<StorageFile> uploadFile(
+      {@required String path,
+      @required Uint8List data,
+      @required String filename,
+      @required String mimeType,
+      @required final Map<String, String> metadata}) async {
+    return await _storage.saveFromBytes(path, data,
+        filename: filename, mimeType: mimeType, metadata: metadata);
+  }
+
+  Future<StorageFile> uploadFileRecord({@required StorageRecord record}) async {
+    return await uploadFile(
+        path: record.path,
+        data: record.data,
+        filename: record.filename,
+        mimeType: record.mimeType,
+        metadata: record.metadata);
+  }
+
   /// Upload words to firestore and cloud storage
   void uploadWordsByCsv() async {
     final COLUMN_WORD_PROCESS_STATUS = 0;
     final COLUMN_WORD_ID = 1;
-    final COLUMN_WORD = COLUMN_WORD_ID+1;
-    final COLUMN_PART_OF_SENTENCE = COLUMN_WORD_ID+2;
-    final COLUMN_MEANING = COLUMN_WORD_ID+3;
-    final COLUMN_PINYIN = COLUMN_WORD_ID+5;
-    final COLUMN_OTHER_MEANING_ID = COLUMN_WORD_ID+6;
-    final COLUMN_DETAIL = COLUMN_WORD_ID+7;
-    final COLUMN_EXAMPLE = COLUMN_WORD_ID+8;
-    final COLUMN_EXAMPLE_MEANING = COLUMN_WORD_ID+9;
-    final COLUMN_EXAMPLE_PINYIN = COLUMN_WORD_ID+10;
-    final COLUMN_RELATED_WORD_ID = COLUMN_WORD_ID+13;
-    final COLUMN_PIC_HASH = COLUMN_WORD_ID+17;
+    final COLUMN_WORD = COLUMN_WORD_ID + 1;
+    final COLUMN_PART_OF_SENTENCE = COLUMN_WORD_ID + 2;
+    final COLUMN_MEANING = COLUMN_WORD_ID + 3;
+    final COLUMN_PINYIN = COLUMN_WORD_ID + 5;
+    final COLUMN_OTHER_MEANING_ID = COLUMN_WORD_ID + 6;
+    final COLUMN_DETAIL = COLUMN_WORD_ID + 7;
+    final COLUMN_EXAMPLE = COLUMN_WORD_ID + 8;
+    final COLUMN_EXAMPLE_MEANING = COLUMN_WORD_ID + 9;
+    final COLUMN_EXAMPLE_PINYIN = COLUMN_WORD_ID + 10;
+    final COLUMN_RELATED_WORD_ID = COLUMN_WORD_ID + 13;
+    final COLUMN_PIC_HASH = COLUMN_WORD_ID + 17;
     final WORD_PROCESS_STATUS_UPLOAD = 2;
     final SEPARATOR = '/';
     final PINYIN_SEPARATOR = '-';
 
-    final storage = Storage()..fetch();
-
     // Build Word from csv
     var csv;
     try {
-      csv = CsvToListConverter()
-          .convert(await rootBundle.loadString('assets/upload/words.csv'))
-            ..removeWhere((w) =>
-                WORD_PROCESS_STATUS_UPLOAD != w[COLUMN_WORD_PROCESS_STATUS] ||
-                w[COLUMN_WORD] == null);
+      csv = CsvToListConverter().convert(await rootBundle.loadString('assets/upload/words.csv'))
+        ..removeWhere((w) =>
+            WORD_PROCESS_STATUS_UPLOAD != w[COLUMN_WORD_PROCESS_STATUS] || w[COLUMN_WORD] == null);
     } catch (_) {
       print('No words.csv found, will skip!');
       return;
@@ -184,43 +200,32 @@ class _FirestoreApi {
           ..picHash = row[COLUMN_PIC_HASH].trim()
           ..wordMeanings = [
             WordMeaning(
-                meaning: row[COLUMN_MEANING].toString().trim().replaceAll(
-                    SEPARATOR, ','),
+                meaning: row[COLUMN_MEANING].toString().trim().replaceAll(SEPARATOR, ','),
                 examples: row[COLUMN_EXAMPLE].toString().trim() == ''
                     ? []
                     : row[COLUMN_EXAMPLE].toString().trim().split(SEPARATOR),
-                exampleMeanings:
-                    row[COLUMN_EXAMPLE_MEANING].toString().trim() == ''
-                        ? []
-                        : row[COLUMN_EXAMPLE_MEANING]
-                            .toString()
-                            .trim()
-                            .split(SEPARATOR),
+                exampleMeanings: row[COLUMN_EXAMPLE_MEANING].toString().trim() == ''
+                    ? []
+                    : row[COLUMN_EXAMPLE_MEANING].toString().trim().split(SEPARATOR),
                 examplePinyins: row[COLUMN_EXAMPLE_PINYIN].trim() == ''
                     ? []
-                    : row[COLUMN_EXAMPLE_PINYIN]
-                        .trim()
-                        .split(SEPARATOR)
-                        .toList())
+                    : row[COLUMN_EXAMPLE_PINYIN].trim().split(SEPARATOR).toList())
           ]
           ..relatedWordIDs = row[COLUMN_RELATED_WORD_ID].trim().split(SEPARATOR)
-          ..otherMeaningIds =
-              row[COLUMN_OTHER_MEANING_ID].trim().split(SEPARATOR))
+          ..otherMeaningIds = row[COLUMN_OTHER_MEANING_ID].trim().split(SEPARATOR))
         .toList();
 
     // Checking status
-    storage.uploader.listen((data) {
+    _storage.uploader.listen((data) {
       print('total: ${data.totalBytes} transferred: ${data.bytesTransferred}');
     });
     // Upload file to cloud storage and save reference
     await words.forEach((word) async {
       // Word image
-      final pathWordPic =
-          '${word.documentPath}/${EnumToString.convertToString(WordKey.pic)}';
+      final pathWordPic = '${word.documentPath}/${EnumToString.convertToString(WordKey.pic)}';
       try {
-        final wordPic = await createFileFromAssets(
-            'upload/${word.wordId}.${extension_image}');
-        word.pic = await storage.save(pathWordPic, wordPic,
+        final wordPic = await createFileFromAssets('upload/${word.wordId}.${extension_image}');
+        word.pic = await _storage.save(pathWordPic, wordPic,
             filename: '${word.wordId}.${extension_image}',
             mimeType: mimeTypeJpeg,
             metadata: {'newPost': 'true'});
@@ -233,17 +238,15 @@ class _FirestoreApi {
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioMale)}';
       final pathWordAudioFemale =
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioFemale)}';
-      final wordAudioFileMale = await createFileFromAssets(
-          'upload/${word.wordId}-W-M.${extension_audio}');
-      final wordAudioFileFemale = await createFileFromAssets(
-          'upload/${word.wordId}-W-F.${extension_audio}');
-      word.wordAudioMale = await storage.save(
-          pathWordAudioMale, wordAudioFileMale,
+      final wordAudioFileMale =
+          await createFileFromAssets('upload/${word.wordId}-W-M.${extension_audio}');
+      final wordAudioFileFemale =
+          await createFileFromAssets('upload/${word.wordId}-W-F.${extension_audio}');
+      word.wordAudioMale = await _storage.save(pathWordAudioMale, wordAudioFileMale,
           filename: '${word.wordId}-W-M.${extension_audio}',
           mimeType: mimeTypeMpeg,
           metadata: {'newPost': 'true'});
-      word.wordAudioFemale = await storage.save(
-          pathWordAudioFemale, wordAudioFileFemale,
+      word.wordAudioFemale = await _storage.save(pathWordAudioFemale, wordAudioFileFemale,
           filename: '${word.wordId}-W-F.${extension_audio}',
           mimeType: mimeTypeMpeg,
           metadata: {'newPost': 'true'});
@@ -254,24 +257,21 @@ class _FirestoreApi {
         var maleAudios = <StorageFile>[];
         var femaleAudios = <StorageFile>[];
         // Each example
-        await Future.forEach(List.generate(meaning.exampleCount, (i) => i),
-            (index) async {
+        await Future.forEach(List.generate(meaning.exampleCount, (i) => i), (index) async {
           final pathExampleMaleAudio =
               '${word.documentPath}/${EnumToString.convertToString(WordMeaningKey.exampleMaleAudios)}';
           final pathExampleFemaleAudio =
               '${word.documentPath}/${EnumToString.convertToString(WordMeaningKey.exampleFemaleAudios)}';
-          final exampleAudioFileMale = await createFileFromAssets(
-              'upload/${word.wordId}-E${index}-M.${extension_audio}');
-          final exampleAudioFileFemale = await createFileFromAssets(
-              'upload/${word.wordId}-E${index}-F.${extension_audio}');
-          final maleAudio = await storage.save(
-              pathExampleMaleAudio, exampleAudioFileMale,
+          final exampleAudioFileMale =
+              await createFileFromAssets('upload/${word.wordId}-E${index}-M.${extension_audio}');
+          final exampleAudioFileFemale =
+              await createFileFromAssets('upload/${word.wordId}-E${index}-F.${extension_audio}');
+          final maleAudio = await _storage.save(pathExampleMaleAudio, exampleAudioFileMale,
               filename: '${word.wordId}-E${index}-M.${extension_audio}',
               mimeType: mimeTypeMpeg,
               metadata: {'newPost': 'true'});
           maleAudios.add(maleAudio);
-          final femaleAudio = await storage.save(
-              pathExampleFemaleAudio, exampleAudioFileFemale,
+          final femaleAudio = await _storage.save(pathExampleFemaleAudio, exampleAudioFileFemale,
               filename: '${word.wordId}-E${index}-F.${extension_audio}',
               mimeType: mimeTypeMpeg,
               metadata: {'newPost': 'true'});
@@ -287,15 +287,16 @@ class _FirestoreApi {
     await _batch.commit();
 
 // Checking status
-    storage.uploader.listen((data) {
+    _storage.uploader.listen((data) {
       print('total: ${data.totalBytes} transferred: ${data.bytesTransferred}');
     });
 
 // Dispose uploader stream
-    storage.dispose();
+    _storage.dispose();
   }
 
-  Future<void> uploadLecturesByCsv({@required String csv, @required Map<String, Uint8List> assets}) async {
+  Future<void> uploadLecturesByCsv(
+      {@required String csv, @required Map<String, Uint8List> assets}) async {
     final columnId = 0;
     final columnLevel = 1;
     final columnTitle = 2;
@@ -305,27 +306,22 @@ class _FirestoreApi {
     final processStatusNew = 0;
     final processStatusModified = 1;
 
-    final storage = Storage()..fetch();
-
     // Build Word from csv
     var csv;
     try {
-      csv = CsvToListConverter()
-          .convert(csv)
-            ..removeWhere((w) =>
-                ![processStatusNew, processStatusModified]
-                    .contains(w[columnProcessStatus]) ||
-                w[columnTitle] == null);
+      csv = CsvToListConverter().convert(csv)
+        ..removeWhere((w) =>
+            ![processStatusNew, processStatusModified].contains(w[columnProcessStatus]) ||
+            w[columnTitle] == null);
     } catch (_) {
       print('No lectures.csv found, will skip!');
       return;
     }
 
-    var lectures =
-        csv.map((row) => Lecture(id: row[columnId], level: row[columnLevel])
-          ..title = row[columnTitle].trim() // Title should not be null
-          ..description = row[columnDescription]?.trim()
-          ..picHash = row[columnPicHash]?.trim());
+    var lectures = csv.map((row) => Lecture(id: row[columnId], level: row[columnLevel])
+      ..title = row[columnTitle].trim() // Title should not be null
+      ..description = row[columnDescription]?.trim()
+      ..picHash = row[columnPicHash]?.trim());
 
     // Upload file to cloud storage and save reference
     await lectures.forEach((lecture) async {
@@ -334,7 +330,7 @@ class _FirestoreApi {
           '${lecture.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
       try {
         final lecturePic = assets['${lecture.lectureId}.$extension_image'];
-        lecture.pic = await storage.saveFromBytes(pathClassPic, lecturePic,
+        lecture.pic = await _storage.saveFromBytes(pathClassPic, lecturePic,
             filename: '${lecture.lectureId}.$extension_image',
             mimeType: mimeTypeJpeg,
             metadata: {'newPost': 'true'});
@@ -348,7 +344,7 @@ class _FirestoreApi {
     await _batch.commit();
 
     // Dispose uploader stream
-    storage.dispose();
+    _storage.dispose();
   }
 
   void uploadSpeechExamsByCsv() async {
@@ -359,16 +355,13 @@ class _FirestoreApi {
     final column_process_statue = 5;
     final process_status_new = 0;
 
-    final storage = Storage()..fetch();
-
     // Build Word from csv
     var csv;
     try {
       csv = CsvToListConverter()
           .convert(await rootBundle.loadString('assets/upload/speechExams.csv'))
-            ..removeWhere((w) =>
-                process_status_new != w[column_process_statue] ||
-                w[column_title] == null);
+            ..removeWhere(
+                (w) => process_status_new != w[column_process_statue] || w[column_title] == null);
     } catch (_) {
       print('No speechExams.csv found, will skip!');
       return;
@@ -380,7 +373,7 @@ class _FirestoreApi {
       ..refText = row[column_ref_text]?.trim());
 
     // Checking status
-    storage.uploader.listen((data) {
+    _storage.uploader.listen((data) {
       print('total: ${data.totalBytes} transferred: ${data.bytesTransferred}');
     });
     // Upload file to cloud storage and save reference
@@ -389,9 +382,8 @@ class _FirestoreApi {
       final pathRefAudio =
           '${exam.documentPath}/${EnumToString.convertToString(SpeechExamKey.refAudio)}';
       try {
-        final refAudio =
-            await createFileFromAssets('upload/${exam.id}.${extension_audio}');
-        exam.pic = await storage.save(pathRefAudio, refAudio,
+        final refAudio = await createFileFromAssets('upload/${exam.id}.${extension_audio}');
+        exam.pic = await _storage.save(pathRefAudio, refAudio,
             filename: '${exam.id}.${extension_audio}',
             mimeType: mimeTypeMpeg,
             metadata: {'newPost': 'true'});
@@ -405,7 +397,7 @@ class _FirestoreApi {
     await _batch.commit();
 
 // Dispose uploader stream
-    storage.dispose();
+    _storage.dispose();
   }
 
   Future<List<Word>> fetchWords({List<String> tags}) async {
@@ -436,7 +428,7 @@ class _FirestoreApi {
     return await collectionPaging.load();
   }
 
-  Future<void> commitBatch(Set<Map<String, Rx<Lecture>>> batchSet) async{
+  Future<void> commitBatch(Set<Map<String, Rx<Lecture>>> batchSet) async {
     batchSet.forEach((element) {
       final action = element.keys.single;
       final lecture = element.values.single.value;
@@ -444,5 +436,4 @@ class _FirestoreApi {
     });
     await _batch.commit();
   }
-
 }

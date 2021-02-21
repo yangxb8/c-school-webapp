@@ -12,12 +12,12 @@ class AppRouter {
           name: '/home',
           page: () =>HomeScreen(),
           binding: BindingsBuilder(() =>
-          {Get.lazyPut<HomeController>(() => HomeController())})),
+          {Get.lazyPut(() => HomeController())})),
       GetPage(
           name: '/manage/lecture',
           page: () =>LectureManagement(),
           binding: BindingsBuilder(() =>
-          {Get.lazyPut<LectureManagementController>(() => LectureManagementController())})),
+          {Get.lazyPut(() => LectureManagementController())})),
     ];
   }
 }

@@ -5,22 +5,15 @@ import 'package:flamingo/flamingo.dart';
 import '../model/lecture.dart';
 
 extension LectureExtension on Lecture {
-  Map<String, dynamic> get properties => {
-        'title': title,
-        'lectureId': lectureId,
-        'description': description,
-        'level': level,
-        'tags': tags,
-        'pic': pic,
-        'picHash': picHash
-      };
   Lecture copyWith({String id, int level, String title, String description, List<String> tags}) {
+    final tagsCopy = <String>[];
+    this.tags.forEach((t) => tagsCopy.add('$t'));
     return Lecture(id: id ?? this.id, level: level ?? this.level)
       ..title = title ?? this.title
       ..description = description ?? this.description
-      ..tags = tags ?? this.tags
-      ..pic = pic
-      ..picHash = picHash;
+      ..tags = tags ?? tagsCopy
+      ..pic = pic.copy()
+      ..picHash = picHash.substring(0); // Copy
   }
 }
 
@@ -50,6 +43,20 @@ extension StorageExtension on Storage {
       metadata: metadata,
       additionalData: additionalData,
     );
+  }
+}
+
+extension StorageFileExtension on StorageFile {
+  String get dirPath => path.replaceFirst('/$name', '');
+
+  StorageFile copy() {
+    return StorageFile(
+        name: name,
+        path: path,
+        url: url,
+        mimeType: mimeType,
+        metadata: metadata,
+        additionalData: additionalData);
   }
 }
 

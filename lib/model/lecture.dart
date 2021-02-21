@@ -1,4 +1,5 @@
 // 📦 Package imports:
+import 'package:cschool_webapp/model/show_properties.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:get/get.dart';
@@ -11,7 +12,7 @@ import 'exam_base.dart';
 
 part 'lecture.flamingo.dart';
 
-class Lecture extends Document<Lecture> implements Searchable{
+class Lecture extends Document<Lecture> implements Searchable, ShowProperties{
   static const levelPrefix = 'Level';
   static LectureService lectureService = Get.find<LectureService>();
 
@@ -76,4 +77,14 @@ class Lecture extends Document<Lecture> implements Searchable{
     'tags': tags,
   };
 
+  @override
+  Map<String, dynamic> get properties => {
+    'title': title,
+    'lectureId': lectureId,
+    'description': description,
+    'level': level,
+    'tags': tags,
+    'pic': pic,
+    'picHash': picHash
+  };
 }
