@@ -1,5 +1,6 @@
 // 📦 Package imports:
-import 'package:cschool_webapp/model/show_properties.dart';
+import 'package:cschool_webapp/model/updatable.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:get/get.dart';
@@ -9,10 +10,13 @@ import 'searchable.dart';
 import 'word.dart';
 import '../service/lecture_service.dart';
 import 'exam_base.dart';
+import '../util/utility.dart';
 
 part 'lecture.flamingo.dart';
 
-class Lecture extends Document<Lecture> implements Searchable, ShowProperties{
+class Lecture extends Document<Lecture>
+    with UpdatableDocument<Lecture>, EquatableMixin
+    implements Searchable {
   static const levelPrefix = 'Level';
   static LectureService lectureService = Get.find<LectureService>();
 
@@ -70,21 +74,42 @@ class Lecture extends Document<Lecture> implements Searchable, ShowProperties{
 
   @override
   Map<String, dynamic> get searchableProperties => {
-    'title': title,
-    'lectureId': lectureId,
-    'description':  description,
-    'level': level.toString(),
-    'tags': tags,
-  };
+        'title': title,
+        'lectureId': lectureId,
+        'description': description,
+        'level': level.toString(),
+        'tags': tags,
+      };
 
   @override
   Map<String, dynamic> get properties => {
-    'title': title,
-    'lectureId': lectureId,
-    'description': description,
-    'level': level,
-    'tags': tags,
-    'pic': pic,
-    'picHash': picHash
-  };
+        'title': title,
+        'lectureId': lectureId,
+        'description': description,
+        'level': level,
+        'tags': tags,
+        'pic': pic,
+        'picHash': picHash
+      };
+
+  @override
+  Lecture copyWith({String id, int level, String title, String description, List<String> tags}) {
+    final tagsCopy = <String>[];
+    this.tags.forEach((t) => tagsCopy.add('$t'));
+    return Lecture(id: id ?? this.id, level: level ?? this.level)
+      ..title = title ?? this.title
+      ..description = description ?? this.description
+      ..tags = tags ?? tagsCopy
+      ..pic = pic.copy()
+      ..picHash = picHash.substring(0); // Copy
+  }
+
+  @override
+  String generateIdFromIndex(int index) => 'C${index.toString().padLeft(4, '0')}';
+
+  @override
+  int get indexOfId => int.parse(id.substring(1));
+
+  @override
+  List<Object> get props => [id, level, title, description, pic, picHash, tags];
 }

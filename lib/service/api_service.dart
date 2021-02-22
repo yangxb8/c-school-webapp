@@ -23,24 +23,25 @@ import '../model/user.dart';
 import '../model/word.dart';
 import '../model/word_meaning.dart';
 import '../util/utility.dart';
+import '../model/updatable.dart';
 
 final logger = LoggerService.logger;
 
 class ApiService extends GetxService {
   static ApiService _instance;
-  static bool _isFirebaseInitilized = false;
+  static bool _isFirebaseInitialized = false;
   static _FirebaseAuthApi _firebaseAuthApi;
   static _FirestoreApi _firestoreApi;
 
   static Future<ApiService> getInstance() async {
     _instance ??= ApiService();
 
-    if (!_isFirebaseInitilized) {
+    if (!_isFirebaseInitialized) {
       await Firebase.initializeApp();
       await Flamingo.initializeApp();
       _firebaseAuthApi = _FirebaseAuthApi.getInstance();
       _firestoreApi = _FirestoreApi.getInstance();
-      _isFirebaseInitilized = true;
+      _isFirebaseInitialized = true;
     }
 
     return _instance;
@@ -52,15 +53,15 @@ class ApiService extends GetxService {
 
 class _FirebaseAuthApi {
   static _FirebaseAuthApi _instance;
-  static bool _isFirebaseAuthInitilized = false;
+  static bool _isFirebaseAuthInitialized = false;
   static FirebaseAuth _firebaseAuth;
 
   static _FirebaseAuthApi getInstance() {
     _instance ??= _FirebaseAuthApi();
 
-    if (!_isFirebaseAuthInitilized) {
+    if (!_isFirebaseAuthInitialized) {
       _firebaseAuth = FirebaseAuth.instance;
-      _isFirebaseAuthInitilized = true;
+      _isFirebaseAuthInitialized = true;
     }
 
     return _instance;
@@ -140,6 +141,10 @@ class _FirestoreApi {
   void updateAppUser(AppUser appUserForUpdate, Function refreshAppUser) {
     _documentAccessor.update(appUserForUpdate).then((_) => refreshAppUser());
   }
+
+  /// Check if document is in firestore
+  Future<bool> containsDoc(Document doc) async =>
+      (await _firestore.doc(doc.documentPath).get()).exists;
 
   /// Upload a single file and return the reference
   Future<StorageFile> uploadFile(
@@ -428,12 +433,12 @@ class _FirestoreApi {
     return await collectionPaging.load();
   }
 
-  Future<void> commitBatch(Set<Map<String, Rx<Lecture>>> batchSet) async {
-    batchSet.forEach((element) {
-      final action = element.keys.single;
-      final lecture = element.values.single.value;
+  Future<void> commitBatch<T extends UpdatableDocument>(Map<T, String> batchMap) async {
+    for(final batch in batchMap.entries){
+      final action = batch.value;
+      final lecture = batch.key;
       _batch.actions[action](lecture);
-    });
+    }
     await _batch.commit();
   }
 }

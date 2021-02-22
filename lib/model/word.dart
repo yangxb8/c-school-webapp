@@ -1,4 +1,5 @@
 // 📦 Package imports:
+import 'package:cschool_webapp/model/updatable.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:get/get.dart';
@@ -12,7 +13,7 @@ import '../service/lecture_service.dart';
 part 'word.flamingo.dart';
 
 /// id is used as primary key for any word
-class Word extends Document<Word> implements Searchable{
+class Word extends Document<Word> with UpdatableDocument<Word> implements Searchable{
   static LectureService lectureService = Get.find<LectureService>();
 
   Word({
@@ -121,6 +122,22 @@ class Word extends Document<Word> implements Searchable{
     'wordMeanings': wordMeanings.map((m) => m.meaning),
     'tags':tags
   };
+
+  @override
+  Word copyWith({String id}) {
+    // TODO: implement copyWith
+    throw UnimplementedError();
+  }
+
+  @override
+  String generateIdFromIndex(int index) => '$lectureId-${index.toString().padLeft(3,'0')}';
+
+  @override
+  int get indexOfId => int.parse(id.split('-')[1]);
+
+  @override
+  // TODO: implement properties
+  Map<String, dynamic> get properties => throw UnimplementedError();
 }
 
 enum WordMemoryStatus { REMEMBERED, NORMAL, FORGOT, NOT_REVIEWED }

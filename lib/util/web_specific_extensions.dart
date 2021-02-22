@@ -2,20 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flamingo/flamingo.dart';
 
-import '../model/lecture.dart';
-
-extension LectureExtension on Lecture {
-  Lecture copyWith({String id, int level, String title, String description, List<String> tags}) {
-    final tagsCopy = <String>[];
-    this.tags.forEach((t) => tagsCopy.add('$t'));
-    return Lecture(id: id ?? this.id, level: level ?? this.level)
-      ..title = title ?? this.title
-      ..description = description ?? this.description
-      ..tags = tags ?? tagsCopy
-      ..pic = pic.copy()
-      ..picHash = picHash.substring(0); // Copy
-  }
-}
 
 extension StorageExtension on Storage {
   Future<StorageFile> saveFromBytes(
@@ -52,7 +38,7 @@ extension StorageFileExtension on StorageFile {
   StorageFile copy() {
     return StorageFile(
         name: name,
-        path: path,
+        path: dirPath,
         url: url,
         mimeType: mimeType,
         metadata: metadata,

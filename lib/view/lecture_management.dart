@@ -1,8 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:cschool_webapp/model/lecture.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flamingo/flamingo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
@@ -40,7 +37,7 @@ class LectureManagement extends GetView<LectureManagementController> {
           ));
     } else if (name == 'pic') {
       return Obx(
-        () => lecture.value.properties[name]?.url == null
+        () => controller.getCachedData(lecture, name) == null
             ? Container(
                 width: width,
                 height: defaultHeight,
@@ -57,13 +54,13 @@ class LectureManagement extends GetView<LectureManagementController> {
   }
 
   Widget buildEditableCell({@required int index, @required String name, @required double width}) {
-    var lecture = controller.allLecturesObx[index];
+    var lecture = controller.docs[index];
 
     var value = lecture.value.properties[name];
     var origin = buildCellContent(lecture: lecture, name: name, width: width);
     Widget input;
     TextEditingController textInputController;
-    Uint8List uploadedFile;
+    var uploadedFile = PlatformFile().obs;
     if (name == 'picHash') {
       return origin;
     }
@@ -78,14 +75,30 @@ class LectureManagement extends GetView<LectureManagementController> {
             controller: textInputController,
           );
         } else if (name == 'pic') {
-          input = IconButton(
-              icon: Icon(Icons.cloud_upload),
-              onPressed: () async {
-                var result = await FilePicker.platform.pickFiles(type: FileType.image);
-                if (result != null) {
-                  uploadedFile = result.files.single.bytes;
-                }
-              });
+          input = ObxValue(
+              (Rx<PlatformFile> val) => Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      val.value.bytes == null
+                          ? Container()
+                          : Image.memory(
+                              val.value.bytes,
+                              height: defaultHeight,
+                              width: width,
+                            ),
+                      IconButton(
+                          icon: Icon(Icons.cloud_upload),
+                          onPressed: () async {
+                            var result = await FilePicker.platform
+                                .pickFiles(allowedExtensions: ['jpg', 'jpeg', 'png']);
+                            if (result != null) {
+                              val(result.files.single);
+                            }
+                          }),
+                    ],
+                  ),
+              uploadedFile);
         }
         return Get.dialog(AlertDialog(
           title: Text('变更内容'),
@@ -101,13 +114,12 @@ class LectureManagement extends GetView<LectureManagementController> {
                 child: Text('取消')),
             TextButton(
                 onPressed: () async {
-                  if ((value is String || value is List<String> || value is num) &&
-                      value.toString() != textInputController.text) {
-                    await controller.handlerValueChange(
+                  if (textInputController != null && value.toString() != textInputController.text) {
+                    await controller.handleValueChange(
                         lecture: lecture, name: name, updated: textInputController.text);
-                  } else if (value is StorageFile) {
-                    await controller.handlerValueChange(
-                        lecture: lecture, name: name, updated: uploadedFile);
+                  } else if (uploadedFile != null) {
+                    await controller.handleValueChange(
+                        lecture: lecture, name: name, updated: uploadedFile.value);
                   }
                   Get.back();
                 },
@@ -132,9 +144,9 @@ class LectureManagement extends GetView<LectureManagementController> {
     ];
     return WillPopScope(
       onWillPop: () async {
-        if (controller.batchSet.isEmpty) return Future.value(true);
+        if (controller.uncommitUpdateExist.isFalse) return Future.value(true);
         Get.snackbar('尚有以下未保存的修改存在，请保存或放弃修改',
-            controller.batchSet.map((e) => e.values.single.value.lectureId).join(', '),
+            controller.modifiedDocuments.keys.map((e) => e.lectureId).join(','),
             duration: 5.seconds);
         return Future.value(false);
       },
@@ -142,39 +154,46 @@ class LectureManagement extends GetView<LectureManagementController> {
         appBar: AppBar(
           title: Text('课程管理').width(100),
           actions: [
-            IconButton(
-                tooltip: '上传课程',
-                icon: Icon(Icons.cloud_upload),
-                onPressed: () => Get.dialog(ValueBuilder<PlatformFile>(
-                      builder: (uploadedFile, updateFn) => AlertDialog(
-                          title: Text('上传课程'),
-                          content: IconButton(
-                              icon: Icon(Icons.cloud_upload),
-                              onPressed: () async {
-                                var result =
-                                    await FilePicker.platform.pickFiles(allowedExtensions: ['zip']);
-                                uploadedFile = result.files.single;
-                              }),
-                          actions: uploadedFile == null
-                              ? []
-                              : [
-                                  TextButton(
-                                      onPressed: () {
-                                        Get.back();
-                                      },
-                                      child: Text('取消')),
-                                  TextButton(
-                                      onPressed: () async {
-                                        await controller.handleLectureUpload(uploadedFile.bytes);
-                                        Get.back();
-                                      },
-                                      child: Text('上传')),
-                                ]),
-                    ))),
+            Obx(
+              () => IconButton(
+                  tooltip: '上传课程',
+                  icon: Icon(Icons.cloud_upload),
+                  onPressed: controller.processing.isTrue
+                      ? null
+                      : () => Get.dialog(ValueBuilder<PlatformFile>(
+                            builder: (uploadedFile, updateFn) => AlertDialog(
+                                title: Text('上传课程'),
+                                content: IconButton(
+                                    icon: Icon(Icons.cloud_upload),
+                                    onPressed: () async {
+                                      var result = await FilePicker.platform
+                                          .pickFiles(allowedExtensions: ['zip']);
+                                      uploadedFile = result.files.single;
+                                    }),
+                                actions: uploadedFile == null
+                                    ? []
+                                    : [
+                                        TextButton(
+                                            onPressed: () {
+                                              Get.back();
+                                            },
+                                            child: Text('取消')),
+                                        TextButton(
+                                            onPressed: () async {
+                                              await controller
+                                                  .handleUpload(uploadedFile.bytes);
+                                              Get.back();
+                                            },
+                                            child: Text('上传')),
+                                      ]),
+                          ))),
+            ),
             Obx(
               () => IconButton(
                 icon: Icon(Icons.save),
-                onPressed: controller.batchSet.isEmpty ? null : controller.saveChange,
+                onPressed: (controller.processing.isTrue || controller.uncommitUpdateExist.isFalse)
+                    ? null
+                    : controller.saveChange,
                 disabledColor: Colors.grey,
                 tooltip: '保存修改',
               ),
@@ -182,7 +201,9 @@ class LectureManagement extends GetView<LectureManagementController> {
             Obx(
               () => IconButton(
                 icon: Icon(Icons.cancel),
-                onPressed: controller.batchSet.isEmpty ? null : controller.cancelChange,
+                onPressed: (controller.processing.isTrue || controller.uncommitUpdateExist.isFalse)
+                    ? null
+                    : controller.cancelChange,
                 disabledColor: Colors.grey,
                 tooltip: '放弃修改',
               ),
@@ -191,40 +212,45 @@ class LectureManagement extends GetView<LectureManagementController> {
         ),
         drawer: const CSchoolWebAppDrawer(),
         body: Obx(
-          () => controller.loading.isTrue
-              ? CircularProgressIndicator().center()
-              : HorizontalDataTable(
-                  leftHandSideColumnWidth: 100,
-                  rightHandSideColumnWidth: 1500,
-                  itemCount: controller.allLecturesObx.length,
-                  isFixedHeader: true,
-                  headerWidgets: columns,
-                  leftSideItemBuilder: (context, index) =>
-                      Obx(() => buildEditableCell(index: index, name: 'lectureId', width: 100)),
-                  rightSideItemBuilder: (context, index) => Row(
+          () => HorizontalDataTable(
+            leftHandSideColumnWidth: 100,
+            rightHandSideColumnWidth: 1500,
+            itemCount: controller.docs.length,
+            isFixedHeader: true,
+            headerWidgets: columns,
+            leftSideItemBuilder: (context, index) =>
+                Obx(() => buildEditableCell(index: index, name: 'lectureId', width: 100)),
+            rightSideItemBuilder: (context, index) => Row(
+              children: [
+                buildEditableCell(index: index, name: 'level', width: 50),
+                buildEditableCell(index: index, name: 'title', width: 200),
+                buildEditableCell(index: index, name: 'description', width: 200),
+                buildEditableCell(index: index, name: 'pic', width: 100),
+                buildEditableCell(index: index, name: 'picHash', width: 100),
+                buildEditableCell(index: index, name: 'tags', width: 200),
+                Container(
+                  width: 100,
+                  alignment: Alignment.center,
+                  child: Row(
                     children: [
-                      buildEditableCell(index: index, name: 'level', width: 50),
-                      buildEditableCell(index: index, name: 'title', width: 200),
-                      buildEditableCell(index: index, name: 'description', width: 200),
-                      buildEditableCell(index: index, name: 'pic', width: 100),
-                      buildEditableCell(index: index, name: 'picHash', width: 100),
-                      buildEditableCell(index: index, name: 'tags', width: 200),
-                      Container(
-                        width: 100,
-                        alignment: Alignment.center,
-                        child: Row(
-                          children: [
-                            IconButton(
-                                icon: Icon(Icons.add), onPressed: () => controller.addRow(index)),
-                            IconButton(
-                                icon: Icon(Icons.indeterminate_check_box_outlined),
-                                onPressed: () => controller.deleteRow(index)),
-                          ],
-                        ),
-                      )
+                      Obx(() => IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: controller.processing.isTrue
+                              ? null
+                              : () => controller.addRow(index: index, nullableFields: ['pic']))),
+                      Obx(
+                        () => IconButton(
+                            icon: Icon(Icons.indeterminate_check_box_outlined),
+                            onPressed: controller.processing.isTrue
+                                ? null
+                                : () => controller.deleteRow(index)),
+                      ),
                     ],
                   ),
-                ),
+                )
+              ],
+            ),
+          ),
         ),
       ),
     );
