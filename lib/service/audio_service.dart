@@ -1,6 +1,5 @@
 // 📦 Package imports:
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
 
 // 🌎 Project imports:
@@ -49,12 +48,6 @@ class AudioService extends GetxService {
     super.onInit();
   }
 
-  /// Pre-loading audio
-  void prepareAudio(String url) {
-    // We don't wait for this
-    DefaultCacheManager().getSingleFile(url);
-  }
-
   /// Play url provided, if other thing is playing, stop it and play the new audio.
   /// If void callback is provided, it will get called after play completed.
   ///
@@ -62,8 +55,7 @@ class AudioService extends GetxService {
   Future<void> play(String url, {Function callback, String key = ''}) async {
     clientKey.value = key;
     // Always cache the audio
-    final localUri = (await DefaultCacheManager().getSingleFile(url)).path;
-    await _audioPlayer.play(localUri, isLocal: true, position: 0.seconds);
+    await _audioPlayer.play(url, position: 0.seconds);
     if (callback != null) {
       _playerListener = once(playerState, (_) async => await callback(),
           condition: () => playerState.value == AudioPlayerState.COMPLETED);

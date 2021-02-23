@@ -106,9 +106,9 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
     }
     processing.toggle();
     _cachedStorageFile.clear();
-    await Future.forEach(docs, (Rx<T> doc) async {
+    for(final doc in docs){
       await registerCache(doc);
-    });
+    }
     processing.toggle();
   }
 
