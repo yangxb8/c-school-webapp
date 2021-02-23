@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -50,18 +51,22 @@ abstract class DocumentUpdateDelegate<T extends UpdatableDocument<T>> extends Ge
   /// Generate an instance of T
   T generateDocument(String id);
 
-  /// Handler of value change of T
-  Future<void> handleValueChange(
-      {@required Rx<T> lecture, @required String name, @required dynamic updated});
+  /// Used for updating storage file
+  void updateStorageFile(
+      {@required Rx<T> doc, @required String name, @required StorageFile storageFile});
 
   /// Handler upload of Docs
-  Future<void> handleUpload(Uint8List uploadedFile);
+  Future<void> handleUpload(PlatformFile uploadedFile);
 
   /// Get index of id
   int indexOfId(String id) => generateDocument(id).indexOfId;
 
   /// Convert index to id
   String generateIdFromIndex(int index) => generateDocument('temp').generateIdFromIndex(index);
+
+  /// If file name(with extension) is image file
+  bool isImageFileName(String filename) =>
+      filename.endsWith('png') || filename.endsWith('jpg') || filename.endsWith('jpeg');
 }
 
 mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDelegate<T> {
@@ -217,36 +222,43 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
   /// Save change to remote
   void saveChange() {
     processing.toggle();
-    showPasswordRequireDialog(() async {
-      await _commitStorage();
-      await _apiService.firestoreApi.commitBatch(modifiedDocuments);
-      processing.toggle();
-      uncommitUpdateExist.value = false;
-    });
+    showPasswordRequireDialog(
+        success: () async {
+          // Batch should be obtained before _commitStorage(), as StorageRecord will be
+          // clear during _commitStorage() and no update will be detected
+          final batch = modifiedDocuments;
+          await _commitStorage();
+          await _apiService.firestoreApi.commitBatch(batch);
+          uncommitUpdateExist.value = false;
+        },
+        last: () => processing.toggle());
   }
 
-  Map<T, String> get modifiedDocuments {
-    final modified = <T, String>{};
+  Map<Rx<T>, String> get modifiedDocuments {
+    final modified = <Rx<T>, String>{};
     final cacheEntries = _cachedStorageFile.entries.toList();
     final cacheLength = _cachedStorageFile.length;
     final backupLength = _backup.length;
     // Add row or Delete row will cause length difference
     for (var i = 0; i < max(cacheLength, backupLength); i++) {
-      final cache = cacheEntries[i].key.value;
-      final backup = _backup[i];
       // When cache shorter than backup, delete those records in backup.
       // Even if deletion happened before this point, we should have move doc up so it's safe.
       if (i >= cacheLength) {
-        modified[backup] = 'delete';
+        modified[Rx<T>(_backup[i])] = 'delete';
+        continue;
         // When cache longer than backup, save those records in cache.
         // Even if Insertion happened before this point, we should have move doc down.
       } else if (i >= backupLength) {
-        modified[cache] = 'save';
-        // Document without createdAt timestamp is newly created
-      } else if (cache.createdAt == null) {
+        modified[cacheEntries[i].key] = 'save';
+        continue;
+      }
+      final cache = cacheEntries[i].key;
+      final backup = _backup[i];
+      // Document without createdAt timestamp is newly created
+      if (cache.value.createdAt == null) {
         modified[cache] = 'save';
         // Document with createdAt timestamp and different content is updated
-      } else if (!cache.equalsTo(backup) ||
+      } else if (!cache.value.equalsTo(backup) ||
           _uncommitCachedStorageFileExits(cacheEntries[i].value)) {
         modified[cache] = 'update';
       }
@@ -269,9 +281,11 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
       for (final field in entry.value.entries) {
         final fieldName = field.key;
         final updatableStorageFile = field.value.value;
-        doc.value.properties[fieldName] = await updatableStorageFile.update();
+        if (updatableStorageFile.hasRecord) {
+          updateStorageFile(
+              doc: doc, name: fieldName, storageFile: await updatableStorageFile.update());
+        }
       }
-      doc.refresh();
     }
     processing.toggle();
   }

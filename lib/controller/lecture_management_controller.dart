@@ -26,90 +26,82 @@ class LectureManagementController extends DocumentUpdateDelegate<Lecture>
   @override
   Lecture generateDocument(String id) => Lecture(id: id);
 
-  @override
   Future<void> handleValueChange(
-      {@required Rx<Lecture> lecture, @required String name, @required dynamic updated}) async {
+      {@required Rx<Lecture> doc, @required String name, @required dynamic updated}) async {
     // If lectureId is changed, move the row
     if (name == 'lectureId') {
-      moveRow(lecture, updated);
+      moveRow(doc, updated);
       return;
     }
-    if (['title', 'description'].contains(name)) {
-      _updateProperties(lecture: lecture, property: name, newVal: updated);
-    } else if (name == 'tags') {
-      // tags
-      _updateProperties(lecture: lecture, property: name, newVal: updated.split('/'));
-    } else if (name == 'level') {
-      _updateProperties(lecture: lecture, property: name, newVal: int.parse(updated));
-    } else if (name == 'pic') {
-      final file = updated as PlatformFile;
-      final path = '${lecture.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
-      var mimeType;
-      if (file.extension == 'png') {
-        mimeType = mimeTypePng;
-      } else if (['jpg', 'jpeg'].contains(file.extension)) {
-        mimeType = mimeTypeJpeg;
-      }
-      final storageRecord = StorageRecord(path, file.bytes,
-          '${lecture.value.lectureId}.${file.extension}', mimeType, {'newPost': 'true'});
-      registerCacheUpdateRecord(doc: lecture, name: name, updateRecord: storageRecord);
-      try {
-        var image = img.decodeImage(file.bytes);
-        final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height);
-        _updateProperties(lecture: lecture, property: 'picHash', newVal: picHash);
-      } on BlurHashEncodeException catch (e) {
-        logger.e(e.message);
-      }
-    }
-  }
-
-  /// Upload lectures with zip file
-  @override
-  Future<void> handleUpload(Uint8List uploadedFile) async {
-    String csvContent;
-    Map<String, Uint8List> assets;
-    final archive = ZipDecoder().decodeBytes(uploadedFile);
-    // Extract the contents of the Zip archive
-    for (final file in archive) {
-      final filename = file.name;
-      if (filename.endsWith('csv')) {
-        csvContent = Utf8Decoder().convert(file.content as Uint8List);
-      } else if (filename.endsWith('jpg') || filename.endsWith('png')) {
-        assets[filename] = file.content as Uint8List;
-      }
-    }
-    await apiService.firestoreApi.uploadLecturesByCsv(csv: csvContent, assets: assets);
-  }
-
-  void _updateProperties(
-      {@required Rx<Lecture> lecture, @required String property, @required dynamic newVal}) {
-    lecture.update((val) {
-      switch (property) {
+    await doc.update((val) async {
+      switch (name) {
         case 'lectureId':
-          val.lectureId = newVal;
+          val.lectureId = updated;
           break;
         case 'title':
-          val.title = newVal;
+          val.title = updated;
           break;
         case 'description':
-          val.description = newVal;
+          val.description = updated;
           break;
         case 'level':
-          val.level = newVal;
+          val.level = int.parse(updated);
           break;
         case 'tags':
-          val.tags.assignAll(newVal);
+          val.tags.assignAll(updated.split('/'));
           break;
         case 'pic':
-          val.pic = newVal;
-          break;
-        case 'picHash':
-          val.picHash = newVal;
+          final file = updated as PlatformFile;
+          final path = '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
+          var mimeType;
+          if (file.extension == 'png') {
+            mimeType = mimeTypePng;
+          } else if (['jpg', 'jpeg'].contains(file.extension)) {
+            mimeType = mimeTypeJpeg;
+          }
+          final storageRecord = StorageRecord(path, file.bytes,
+              '${doc.value.lectureId}.${file.extension}', mimeType, {'newPost': 'true'});
+          registerCacheUpdateRecord(doc: doc, name: name, updateRecord: storageRecord);
+          try {
+            var image = img.decodeImage(file.bytes);
+            final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height);
+            val.picHash = picHash;
+          } on BlurHashEncodeException catch (e) {
+            logger.e(e.message);
+          }
           break;
         default:
           return;
       }
     });
+  }
+
+  /// Upload lectures with zip file
+  @override
+  Future<void> handleUpload(PlatformFile uploadedFile) async {
+    String csvContent;
+    final assets = <String, Uint8List>{};
+    final archive = ZipDecoder().decodeBytes(uploadedFile.bytes);
+    // Extract the contents of the Zip archive
+    for (final file in archive) {
+      final filename = file.name;
+      if(filename.startsWith('_')){
+        continue;
+      }
+      if (filename.endsWith('csv')) {
+        csvContent = utf8.decode(file.content as Uint8List);
+      } else if (isImageFileName(filename)) {
+        assets[filename] = file.content as Uint8List;
+      }
+    }
+    await apiService.firestoreApi.uploadLecturesByCsv(content: csvContent, assets: assets);
+  }
+
+  @override
+  void updateStorageFile({Rx<Lecture> doc, String name, StorageFile storageFile}) {
+    if(name == 'pic'){
+      doc.update((val) => val.pic=storageFile);
+    }
   }
 
 }

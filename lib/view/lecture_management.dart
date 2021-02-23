@@ -116,10 +116,10 @@ class LectureManagement extends GetView<LectureManagementController> {
                 onPressed: () async {
                   if (textInputController != null && value.toString() != textInputController.text) {
                     await controller.handleValueChange(
-                        lecture: lecture, name: name, updated: textInputController.text);
+                        doc: lecture, name: name, updated: textInputController.text);
                   } else if (uploadedFile != null) {
                     await controller.handleValueChange(
-                        lecture: lecture, name: name, updated: uploadedFile.value);
+                        doc: lecture, name: name, updated: uploadedFile.value);
                   }
                   Get.back();
                 },
@@ -146,7 +146,7 @@ class LectureManagement extends GetView<LectureManagementController> {
       onWillPop: () async {
         if (controller.uncommitUpdateExist.isFalse) return Future.value(true);
         Get.snackbar('尚有以下未保存的修改存在，请保存或放弃修改',
-            controller.modifiedDocuments.keys.map((e) => e.lectureId).join(','),
+            controller.modifiedDocuments.keys.map((e) => e.value.lectureId).join(','),
             duration: 5.seconds);
         return Future.value(false);
       },
@@ -154,38 +154,35 @@ class LectureManagement extends GetView<LectureManagementController> {
         appBar: AppBar(
           title: Text('课程管理').width(100),
           actions: [
-            Obx(
-              () => IconButton(
-                  tooltip: '上传课程',
-                  icon: Icon(Icons.cloud_upload),
-                  onPressed: controller.processing.isTrue
-                      ? null
-                      : () => Get.dialog(ValueBuilder<PlatformFile>(
-                            builder: (uploadedFile, updateFn) => AlertDialog(
-                                title: Text('上传课程'),
-                                content: IconButton(
-                                    icon: Icon(Icons.cloud_upload),
-                                    onPressed: () async {
-                                      var result = await FilePicker.platform
-                                          .pickFiles(allowedExtensions: ['zip']);
-                                      uploadedFile = result.files.single;
-                                    }),
-                                actions: uploadedFile == null
-                                    ? []
-                                    : [
-                                        TextButton(
-                                            onPressed: () {
-                                              Get.back();
-                                            },
-                                            child: Text('取消')),
-                                        TextButton(
-                                            onPressed: () async {
-                                              await controller.handleUpload(uploadedFile.bytes);
-                                              Get.back();
-                                            },
-                                            child: Text('上传')),
-                                      ]),
-                          ))),
+            IconButton(
+              tooltip: '上传课程',
+              icon: Icon(Icons.cloud_upload),
+              onPressed: () => Get.dialog(ObxValue<Rx<PlatformFile>>(
+                  (uploadedFile) => AlertDialog(
+                      title: Text('上传课程'),
+                      content: IconButton(
+                          icon: Icon(Icons.cloud_upload),
+                          onPressed: () async {
+                            var result =
+                                await FilePicker.platform.pickFiles(allowedExtensions: ['zip']);
+                            uploadedFile(result.files.single);
+                          }),
+                      actions: uploadedFile.value.name == null
+                          ? []
+                          : [
+                              TextButton(
+                                  onPressed: () {
+                                    Get.back();
+                                  },
+                                  child: Text('取消')),
+                              TextButton(
+                                  onPressed: () async {
+                                    await controller.handleUpload(uploadedFile.value);
+                                    Get.back();
+                                  },
+                                  child: Text('上传')),
+                            ]),
+                  PlatformFile().obs)),
             ),
             Obx(
               () => IconButton(

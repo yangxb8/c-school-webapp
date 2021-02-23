@@ -5,6 +5,7 @@ import 'dart:typed_data';
 // 📦 Package imports:
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
+import 'package:supercharged/supercharged.dart';
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -98,12 +99,10 @@ class _FirebaseAuthApi {
 
 class _FirestoreApi {
   static const extension_audio = 'mp3';
-  static const extension_image = 'jpg';
+  static const extension_image = ['jpg', 'jpeg', 'png'];
   static _FirestoreApi _instance;
   static FirebaseFirestore _firestore;
   static DocumentAccessor _documentAccessor;
-  static Storage _storage;
-  static Batch _batch;
   static User _currentUser;
 
   static _FirestoreApi getInstance() {
@@ -111,8 +110,6 @@ class _FirestoreApi {
       _instance = _FirestoreApi();
       _documentAccessor = DocumentAccessor();
       _firestore = FirebaseFirestore.instance;
-      _storage = Storage()..fetch();
-      _batch = Batch();
       // _setupEmulator(); //TODO: Uncomment this to use firestore simulator
       _currentUser = _FirebaseAuthApi().currentUser;
     }
@@ -153,8 +150,11 @@ class _FirestoreApi {
       @required String filename,
       @required String mimeType,
       @required final Map<String, String> metadata}) async {
-    return await _storage.saveFromBytes(path, data,
+    final _storage = Storage()..fetch();
+    final storageFile = await _storage.saveFromBytes(path, data,
         filename: filename, mimeType: mimeType, metadata: metadata);
+    _storage.dispose();
+    return storageFile;
   }
 
   Future<StorageFile> uploadFileRecord({@required StorageRecord record}) async {
@@ -168,6 +168,8 @@ class _FirestoreApi {
 
   /// Upload words to firestore and cloud storage
   void uploadWordsByCsv() async {
+    final _storage = Storage()..fetch();
+    final _batch = Batch();
     final COLUMN_WORD_PROCESS_STATUS = 0;
     final COLUMN_WORD_ID = 1;
     final COLUMN_WORD = COLUMN_WORD_ID + 1;
@@ -291,32 +293,25 @@ class _FirestoreApi {
     });
     await _batch.commit();
 
-// Checking status
-    _storage.uploader.listen((data) {
-      print('total: ${data.totalBytes} transferred: ${data.bytesTransferred}');
-    });
-
 // Dispose uploader stream
     _storage.dispose();
   }
 
   Future<void> uploadLecturesByCsv(
-      {@required String csv, @required Map<String, Uint8List> assets}) async {
+      {@required String content, @required Map<String, Uint8List> assets}) async {
+    final _storage = Storage()..fetch();
+    final _batch = Batch();
     final columnId = 0;
     final columnLevel = 1;
     final columnTitle = 2;
     final columnDescription = 3;
-    final columnProcessStatus = 5;
     final columnPicHash = 6;
-    final processStatusNew = 0;
-    final processStatusModified = 1;
 
     // Build Word from csv
-    var csv;
+    List<List<dynamic>> csv;
     try {
-      csv = CsvToListConverter().convert(csv)
+      csv = CsvToListConverter().convert(content)
         ..removeWhere((w) =>
-            ![processStatusNew, processStatusModified].contains(w[columnProcessStatus]) ||
             w[columnTitle] == null);
     } catch (_) {
       print('No lectures.csv found, will skip!');
@@ -329,19 +324,21 @@ class _FirestoreApi {
       ..picHash = row[columnPicHash]?.trim());
 
     // Upload file to cloud storage and save reference
-    await lectures.forEach((lecture) async {
+    await Future.forEach(lectures, (lecture) async {
       // Word image
       final pathClassPic =
           '${lecture.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
-      try {
-        final lecturePic = assets['${lecture.lectureId}.$extension_image'];
-        lecture.pic = await _storage.saveFromBytes(pathClassPic, lecturePic,
-            filename: '${lecture.lectureId}.$extension_image',
-            mimeType: mimeTypeJpeg,
-            metadata: {'newPost': 'true'});
-      } catch (e, _) {
-        logger.i('Not image found for ${lecture.title}, will skip');
+      final extension =
+          extension_image.where((e) => assets.containsKey('${lecture.lectureId}.$e')).firstOrNull();
+      if (extension == null) {
+        return;
       }
+      final filename = '${lecture.lectureId}.$extension';
+      final lecturePic = assets[filename];
+      lecture.pic = await _storage.saveFromBytes(pathClassPic, lecturePic,
+          filename: filename,
+          mimeType: mimeTypeJpeg,
+          metadata: {'newPost': 'true'});
 
       // Finally, save the word
       _batch.save(lecture);
@@ -353,6 +350,8 @@ class _FirestoreApi {
   }
 
   void uploadSpeechExamsByCsv() async {
+    final _storage = Storage()..fetch();
+    final _batch = Batch();
     final column_id = 0;
     final column_title = 2;
     final column_question = 3;
@@ -433,12 +432,15 @@ class _FirestoreApi {
     return await collectionPaging.load();
   }
 
-  Future<void> commitBatch<T extends UpdatableDocument>(Map<T, String> batchMap) async {
-    for(final batch in batchMap.entries){
+  Future<void> commitBatch<T extends UpdatableDocument>(Map<Rx<T>, String> batchMap) async {
+    final _storage = Storage()..fetch();
+    final _batch = Batch();
+    for (final batch in batchMap.entries) {
       final action = batch.value;
-      final lecture = batch.key;
-      _batch.actions[action](lecture);
+      final doc = batch.key.value;
+      _batch.actions[action](doc);
     }
     await _batch.commit();
+    _storage.dispose();
   }
 }
