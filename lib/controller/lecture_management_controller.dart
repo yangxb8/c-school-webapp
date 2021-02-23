@@ -106,6 +106,8 @@ class LectureManagementController extends DocumentUpdateDelegate<Lecture>
         case 'picHash':
           val.picHash = newVal;
           break;
+        default:
+          return;
       }
     });
   }

@@ -1,6 +1,5 @@
 // 📦 Package imports:
 import 'package:cschool_webapp/model/updatable.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:get/get.dart';
@@ -14,9 +13,7 @@ import '../util/utility.dart';
 
 part 'lecture.flamingo.dart';
 
-class Lecture extends Document<Lecture>
-    with UpdatableDocument<Lecture>, EquatableMixin
-    implements Searchable {
+class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implements Searchable {
   static const levelPrefix = 'Level';
   static LectureService lectureService = Get.find<LectureService>();
 
@@ -100,7 +97,7 @@ class Lecture extends Document<Lecture>
       ..title = title ?? this.title
       ..description = description ?? this.description
       ..tags = tags ?? tagsCopy
-      ..pic = pic.copy()
+      ..pic = pic?.copy() // If not image or new row, this will be null
       ..picHash = picHash.substring(0); // Copy
   }
 
@@ -111,5 +108,11 @@ class Lecture extends Document<Lecture>
   int get indexOfId => int.parse(id.substring(1));
 
   @override
-  List<Object> get props => [id, level, title, description, pic, picHash, tags];
+  bool equalsTo(Lecture other) =>
+      id == other.id &&
+      level == other.level &&
+      title == other.title &&
+      description == other.description &&
+      tags.every((element) => other.tags.contains(element)) &&
+      picHash == other.picHash;
 }

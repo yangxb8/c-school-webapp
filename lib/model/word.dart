@@ -138,6 +138,12 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
   @override
   // TODO: implement properties
   Map<String, dynamic> get properties => throw UnimplementedError();
+
+  @override
+  bool equalsTo(Word other) {
+    // TODO: implement equalsTo
+    throw UnimplementedError();
+  }
 }
 
 enum WordMemoryStatus { REMEMBERED, NORMAL, FORGOT, NOT_REVIEWED }

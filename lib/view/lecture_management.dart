@@ -180,8 +180,7 @@ class LectureManagement extends GetView<LectureManagementController> {
                                             child: Text('取消')),
                                         TextButton(
                                             onPressed: () async {
-                                              await controller
-                                                  .handleUpload(uploadedFile.bytes);
+                                              await controller.handleUpload(uploadedFile.bytes);
                                               Get.back();
                                             },
                                             child: Text('上传')),
@@ -215,41 +214,47 @@ class LectureManagement extends GetView<LectureManagementController> {
           () => HorizontalDataTable(
             leftHandSideColumnWidth: 100,
             rightHandSideColumnWidth: 1500,
-            itemCount: controller.docs.length,
+            itemCount: controller.docs.length, // Add a Line for insert new row add bottom
             isFixedHeader: true,
             headerWidgets: columns,
             leftSideItemBuilder: (context, index) =>
-                Obx(() => buildEditableCell(index: index, name: 'lectureId', width: 100)),
-            rightSideItemBuilder: (context, index) => Row(
-              children: [
-                buildEditableCell(index: index, name: 'level', width: 50),
-                buildEditableCell(index: index, name: 'title', width: 200),
-                buildEditableCell(index: index, name: 'description', width: 200),
-                buildEditableCell(index: index, name: 'pic', width: 100),
-                buildEditableCell(index: index, name: 'picHash', width: 100),
-                buildEditableCell(index: index, name: 'tags', width: 200),
-                Container(
-                  width: 100,
-                  alignment: Alignment.center,
-                  child: Row(
-                    children: [
-                      Obx(() => IconButton(
-                          icon: Icon(Icons.add),
-                          onPressed: controller.processing.isTrue
-                              ? null
-                              : () => controller.addRow(index: index, nullableFields: ['pic']))),
-                      Obx(
-                        () => IconButton(
-                            icon: Icon(Icons.indeterminate_check_box_outlined),
-                            onPressed: controller.processing.isTrue
-                                ? null
-                                : () => controller.deleteRow(index)),
-                      ),
-                    ],
-                  ),
-                )
-              ],
-            ),
+                buildEditableCell(index: index, name: 'lectureId', width: 100),
+            rightSideItemBuilder: (context, index) {
+              var addButton = Obx(() => IconButton(
+                  icon: Icon(Icons.add),
+                  onPressed: controller.processing.isTrue
+                      ? null
+                      : () => controller.addRow(index: index, nullableFields: ['pic'])));
+              var deleteButton = Obx(
+                () => IconButton(
+                    icon: Icon(Icons.indeterminate_check_box_outlined),
+                    onPressed:
+                        controller.processing.isTrue ? null : () => controller.deleteRow(index)),
+              );
+              var addDeleteRow = Row(
+                children: [
+                  addButton,
+                  deleteButton,
+                ],
+              );
+              return index == controller.docs.length
+                  ? addButton.center()
+                  : Row(
+                      children: [
+                        buildEditableCell(index: index, name: 'level', width: 50),
+                        buildEditableCell(index: index, name: 'title', width: 200),
+                        buildEditableCell(index: index, name: 'description', width: 200),
+                        buildEditableCell(index: index, name: 'pic', width: 100),
+                        buildEditableCell(index: index, name: 'picHash', width: 100),
+                        buildEditableCell(index: index, name: 'tags', width: 200),
+                        Container(
+                          width: 100,
+                          alignment: Alignment.center,
+                          child: addDeleteRow,
+                        )
+                      ],
+                    );
+            },
           ),
         ),
       ),
