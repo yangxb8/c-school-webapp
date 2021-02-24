@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
@@ -13,8 +15,7 @@ import '../service/api_service.dart';
 import '../service/logger_service.dart';
 import '../view/ui_view/password_require.dart';
 
-/// MUST: also use [EquatableMixin] or this will break. Also, don't add StorageFile
-/// to props of [EquatableMixin]. Those will be handled by this mixin
+/// MUST: All field must have initial value not null EXCEPT for StorageFile
 mixin UpdatableDocument<T> on Document<T> {
   /// Increase Id of this doc
   String get increaseId => generateIdFromIndex(indexOfId + 1);
@@ -41,19 +42,26 @@ mixin UpdatableDocument<T> on Document<T> {
   /// create Copy of the document, id MUST be updatable with this method
   T copyWith({String id});
 
-  /// Determine whether two T has same value
+  /// Don't add StorageFile here. Those will be handled by this mixin
   bool equalsTo(T other);
 }
 
-abstract class DocumentUpdateDelegate<T extends UpdatableDocument<T>> extends GetxController {
+abstract class DocumentUpdateController<T extends UpdatableDocument<T>>
+    extends GetxController {
+  /// Get all docs
   RxList<Rx<T>> get docs;
 
   /// Generate an instance of T
   T generateDocument(String id);
 
+  Future<void> handleValueChange(
+      {@required Rx<T> doc, @required String name, @required dynamic updated});
+
   /// Used for updating storage file
   void updateStorageFile(
-      {@required Rx<T> doc, @required String name, @required StorageFile storageFile});
+      {@required Rx<T> doc,
+      @required String name,
+      @required StorageFile storageFile});
 
   /// Handler upload of Docs
   Future<void> handleUpload(PlatformFile uploadedFile);
@@ -62,16 +70,18 @@ abstract class DocumentUpdateDelegate<T extends UpdatableDocument<T>> extends Ge
   int indexOfId(String id) => generateDocument(id).indexOfId;
 
   /// Convert index to id
-  String generateIdFromIndex(int index) => generateDocument('temp').generateIdFromIndex(index);
+  String generateIdFromIndex(int index) =>
+      generateDocument('temp').generateIdFromIndex(index);
 
   /// If file name(with extension) is image file
   bool isImageFileName(String filename) =>
-      filename.endsWith('png') || filename.endsWith('jpg') || filename.endsWith('jpeg');
-}
+      filename.endsWith('png') ||
+      filename.endsWith('jpg') ||
+      filename.endsWith('jpeg');
 
-mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDelegate<T> {
   /// storageFile cache of documents. <Document, <FieldName, UpdatableStorageFile>>
-  final _cachedStorageFile = <Rx<T>, Map<String, Rx<UpdatableStorageFile>>>{}.obs;
+  final _cachedStorageFile =
+      <Rx<T>, Map<String, Rx<UpdatableStorageFile>>>{}.obs;
 
   /// Api Service
   final _apiService = Get.find<ApiService>();
@@ -100,16 +110,12 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
 
   /// Refresh cache for all docs
   Future<void> refreshCachedStorageFile() async {
-    if (processing.isTrue) {
-      _logger.e('Async action is called while processing last request');
-      return;
-    }
-    processing.toggle();
+    if (!tryLock()) return;
     _cachedStorageFile.clear();
-    for(final doc in docs){
+    for (final doc in docs) {
       await registerCache(doc);
     }
-    processing.toggle();
+    unlock();
   }
 
   /// Get binary data from cache, cache will be updated by upload.
@@ -122,7 +128,7 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
   }
 
   /// Add a new doc to docs, this will change all docs below insertion point
-  void addRow({@required int index, @required List<String> nullableFields}) {
+  void addRow({@required int index}) {
     // docId start from 1, so index+1
     final newDocId = generateIdFromIndex(index + 1);
     for (var i = 0; i < docs.length; i++) {
@@ -135,7 +141,7 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
     final newDoc = Rx<T>(generateDocument(newDocId));
     docs.insert(index, newDoc);
     // Pic is null because it's a new row
-    registerCache(newDoc, nullableFields: ['pic']);
+    registerCache(newDoc);
   }
 
   /// Delete a doc from docs, this will change all docs below deletion point
@@ -163,8 +169,8 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
     range.forEach((i) {
       // 0 is the target document, we will deal with it later
       final beforeMoveDoc = docs[fromIndex + i];
-      final afterMoveDoc = beforeMoveDoc.value
-          .copyWithObservable(id: generateIdFromIndex(beforeMoveDoc.value.indexOfId + delta));
+      final afterMoveDoc = beforeMoveDoc.value.copyWithObservable(
+          id: generateIdFromIndex(beforeMoveDoc.value.indexOfId + delta));
       docs[fromIndex + i + delta] = afterMoveDoc;
       reassignCache(originRef: beforeMoveDoc, newRef: afterMoveDoc);
     });
@@ -178,11 +184,12 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
   /// Add cache to _cachedStorageFile, this is used when new data inserted
   /// Passing filed names as nullableFields to register null value for field
   /// This could be useful when new record is inserted and StorageFile been null
-  void registerCache(Rx<T> doc, {List<String> nullableFields = const []}) async {
+  void registerCache(Rx<T> doc) async {
     final map = <String, Rx<UpdatableStorageFile>>{};
     for (final entry in doc.value.properties.entries) {
       if (entry.value is StorageFile) {
-        map[entry.key] = await UpdatableStorageFile.cacheFileAndObserve(entry.value);
+        map[entry.key] =
+            await UpdatableStorageFile.cacheFileAndObserve(entry.value);
       }
     }
     for (final field in nullableFields) {
@@ -206,7 +213,9 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
 
   /// Add updateRecord to cache. This will also update cache date to update view
   void registerCacheUpdateRecord(
-      {@required Rx<T> doc, @required String name, @required StorageRecord updateRecord}) {
+      {@required Rx<T> doc,
+      @required String name,
+      @required StorageRecord updateRecord}) {
     _logger.d('Cache $name will be updated for ${doc.value.id}');
     _cachedStorageFile[doc][name].value.updateRecord = updateRecord;
   }
@@ -221,7 +230,7 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
 
   /// Save change to remote
   void saveChange() {
-    processing.toggle();
+    if (!tryLock()) return;
     showPasswordRequireDialog(
         success: () async {
           // Batch should be obtained before _commitStorage(), as StorageRecord will be
@@ -231,7 +240,7 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
           await _apiService.firestoreApi.commitBatch(batch);
           uncommitUpdateExist.value = false;
         },
-        last: () => processing.toggle());
+        last: () => unlock());
   }
 
   Map<Rx<T>, String> get modifiedDocuments {
@@ -266,16 +275,54 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
     return modified;
   }
 
-  bool _uncommitCachedStorageFileExits(Map<String, Rx<UpdatableStorageFile>> fields) =>
+  /// WARN: Remember to call unlock or we are stuck
+  /// Try lock processing for async action, return true if success
+  bool tryLock() {
+    if (processing.isTrue) {
+      _logger.e('Async action is called while processing last request');
+      Get.snackbar('处理中...', '请稍后再试');
+      return false;
+    }
+    processing.toggle();
+    return true;
+  }
+
+  /// unlock processing, return true if success
+  bool unlock() {
+    if (processing.isFalse) {
+      _logger.e('unlock is called while processing is false');
+      return false;
+    }
+    processing.toggle();
+    return true;
+  }
+
+  /// Csv file will be converted to UTF-8 String with name 'csv', binary file will be converted to Uint8List
+  Map<String, dynamic> unArchive(PlatformFile uploadedFile) {
+    final files = <String, dynamic>{};
+    final archive = ZipDecoder().decodeBytes(uploadedFile.bytes);
+    // Extract the contents of the Zip archive
+    for (final file in archive) {
+      final filename = file.name;
+      if (filename.startsWith('_')) {
+        continue;
+      }
+      if (filename.endsWith('csv')) {
+        files['csv'] = utf8.decode(file.content as Uint8List);
+      } else if (isImageFileName(filename)) {
+        files[filename] = file.content as Uint8List;
+      }
+    }
+    return files;
+  }
+
+  bool _uncommitCachedStorageFileExits(
+          Map<String, Rx<UpdatableStorageFile>> fields) =>
       fields.entries.any((field) => field.value.value.hasRecord);
 
   /// Commit all cache to Storage and update StorageFile accordingly
   Future<void> _commitStorage() async {
-    processing.toggle();
-    if (processing.isTrue) {
-      _logger.e('Async action is called while processing last request');
-      return;
-    }
+    if (!tryLock()) return;
     for (final entry in _cachedStorageFile.entries) {
       final doc = entry.key;
       for (final field in entry.value.entries) {
@@ -283,11 +330,13 @@ mixin DocumentUpdateMixin<T extends UpdatableDocument<T>> on DocumentUpdateDeleg
         final updatableStorageFile = field.value.value;
         if (updatableStorageFile.hasRecord) {
           updateStorageFile(
-              doc: doc, name: fieldName, storageFile: await updatableStorageFile.update());
+              doc: doc,
+              name: fieldName,
+              storageFile: await updatableStorageFile.update());
         }
       }
     }
-    processing.toggle();
+    unlock();
   }
 
   /// Worker to monitor each doc change.
@@ -316,7 +365,8 @@ class UpdatableStorageFile {
 
   bool get hasRecord => _updateRecord != null;
 
-  static Future<Rx<UpdatableStorageFile>> cacheFileAndObserve(StorageFile storageFile) async {
+  static Future<Rx<UpdatableStorageFile>> cacheFileAndObserve(
+      StorageFile storageFile) async {
     final instance = UpdatableStorageFile._internal();
     instance.data = storageFile == null
         ? null
@@ -331,7 +381,8 @@ class UpdatableStorageFile {
 
   Future<StorageFile> update() async {
     if (!hasRecord) {
-      LoggerService.logger.i('No record found for this StorageFile! Return null');
+      LoggerService.logger
+          .i('No record found for this StorageFile! Return null');
       return null;
     }
     final result = await Get.find<ApiService>().firestoreApi.uploadFile(
@@ -362,9 +413,11 @@ class StorageRecord {
   final String mimeType;
   final Map<String, String> metadata;
 
-  StorageRecord(this.path, this.data, this.filename, this.mimeType, this.metadata);
+  StorageRecord(
+      this.path, this.data, this.filename, this.mimeType, this.metadata);
 
-  StorageRecord.fromStorageFile({@required StorageFile storageFile, @required this.data})
+  StorageRecord.fromStorageFile(
+      {@required StorageFile storageFile, @required this.data})
       : assert(storageFile != null),
         path = storageFile.dirPath,
         filename = storageFile.name,

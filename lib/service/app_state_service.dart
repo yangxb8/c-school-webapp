@@ -5,6 +5,7 @@
 * initialized first!
 */
 class AppStateService {
+  static bool isInitialized = false;
 
   static bool get isDebug {
     var debugMode = false;

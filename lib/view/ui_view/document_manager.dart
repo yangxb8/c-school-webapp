@@ -1,52 +1,48 @@
-import 'package:cschool_webapp/model/lecture.dart';
+import 'package:cschool_webapp/model/updatable.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
 import 'package:styled_widget/styled_widget.dart';
 
-import '../controller/lecture_management_controller.dart';
+import '../../controller/lecture_management_controller.dart';
 import 'package:get/get.dart';
-import 'ui_view/editable_cell.dart';
+import 'editable_cell.dart';
 
-import 'ui_view/webapp_drawer.dart';
+import 'webapp_drawer.dart';
 
-class LectureManagement extends GetView<LectureManagementController> {
-  static const defaultHeight = 100.0;
+class DocumentManager<T extends UpdatableDocument<T>,
+    N extends DocumentUpdateController<T>> extends StatelessWidget {
+  /// Usually TitleCell
+  final List<Widget> columns;
+  final N controller;
+  final String name;
+
+  DocumentManager({@required this.columns, @required this.controller})
+      : name = T.toString();
+
+  /// Prevent user from exiting if there is uncommit change
+  void onWillPop() async {
+    if (controller.uncommitUpdateExist.isFalse) return Future.value(true);
+    Get.snackbar('尚有以下未保存的修改存在，请保存或放弃修改',
+        controller.modifiedDocuments.keys.map((e) => e.value.id).join(','),
+        duration: 5.seconds);
+    return Future.value(false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    var columns = <Widget>[
-      TitleCell(title: '课程编号', width: 100),
-      TitleCell(title: 'LEVEL', width: 50),
-      TitleCell(title: '课程标题', width: 200),
-      TitleCell(title: '课程描述', width: 200),
-      TitleCell(title: '课程图片', width: 100),
-      TitleCell(title: '占位图片', width: 100),
-      TitleCell(title: '标签(用/分隔)', width: 200),
-      TitleCell(title: '插入删除', width: 100),
-    ];
     return WillPopScope(
-      onWillPop: () async {
-        if (controller.uncommitUpdateExist.isFalse) return Future.value(true);
-        Get.snackbar(
-            '尚有以下未保存的修改存在，请保存或放弃修改',
-            controller.modifiedDocuments.keys
-                .map((e) => e.value.lectureId)
-                .join(','),
-            duration: 5.seconds);
-        return Future.value(false);
-      },
+      onWillPop: onWillPop,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('课程管理').width(100),
+          title: Text('$name管理').width(100),
           actions: [
             IconButton(
-              tooltip: '上传课程',
+              tooltip: '上传$name',
               icon: Icon(Icons.cloud_upload),
               onPressed: () => Get.dialog(ObxValue<Rx<PlatformFile>>(
                   (uploadedFile) => AlertDialog(
-                      title: Text('上传课程'),
+                      title: Text('上传$name'),
                       content: IconButton(
                           icon: Icon(Icons.cloud_upload),
                           onPressed: () async {
@@ -105,15 +101,18 @@ class LectureManagement extends GetView<LectureManagementController> {
                 .docs.length, // Add a Line for insert new row add bottom
             isFixedHeader: true,
             headerWidgets: columns,
-            leftSideItemBuilder: (context, index) =>
-                buildEditableCell(index: index, name: 'lectureId', width: 100),
+            leftSideItemBuilder: (context, index) => EditableCell<T, N>(
+              index: index,
+              name: 'id',
+              width: 100,
+              controller: controller,
+            ),
             rightSideItemBuilder: (context, index) {
               var addButton = Obx(() => IconButton(
                   icon: Icon(Icons.add),
                   onPressed: controller.processing.isTrue
                       ? null
-                      : () => controller
-                          .addRow(index: index, storageFields: ['pic'])));
+                      : () => controller.addRow(index: index)));
               var deleteButton = Obx(
                 () => IconButton(
                     icon: Icon(Icons.indeterminate_check_box_outlined),

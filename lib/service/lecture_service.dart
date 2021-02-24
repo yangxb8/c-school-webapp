@@ -18,40 +18,52 @@ class LectureService extends GetxService {
   static final ApiService _apiService = Get.find();
 
   /// All classes available
-  static RxList<Rx<Lecture>> allLecturesObx;
+  static final allLecturesObx = <Rx<Lecture>>[].obs;
 
   /// All words available
-  static RxList<Rx<Word>> allWordsObx;
+  static final allWordsObx = <Rx<Word>>[].obs;
 
   /// All exams available
-  static RxList<Rx<Exam>> allExamsObx;
+  static final allExamsObx = <Rx<Exam>>[].obs;
 
   static Future<LectureService> getInstance() async {
     if (_instance == null) {
       _instance = LectureService();
-
-      /// All available Lectures
-      allLecturesObx =
-          (await _apiService.firestoreApi.fetchLectures()).map((e) => e.obs).toList().obs;
-
-      /// All available words
-      allWordsObx = (await _apiService.firestoreApi.fetchWords()).map((e) => e.obs).toList().obs;
-
-      /// All available exams
-      allExamsObx = (await _apiService.firestoreApi.fetchExams()).map((e) => e.obs).toList().obs;
+      await refresh();
     }
-
     return _instance;
   }
 
-  List<Word> findWordsByConditions({WordMemoryStatus wordMemoryStatus, String lectureId}) {
+  static Future<void> refresh() async {
+    /// All available Lectures
+    allLecturesObx.assignAll((await _apiService.firestoreApi.fetchLectures())
+        .map((e) => e.obs)
+        .toList()
+        .obs);
+
+    /// All available words
+    allWordsObx.assignAll((await _apiService.firestoreApi.fetchWords())
+        .map((e) => e.obs)
+        .toList()
+        .obs);
+
+    /// All available exams
+    allExamsObx.assignAll((await _apiService.firestoreApi.fetchExams())
+        .map((e) => e.obs)
+        .toList()
+        .obs);
+  }
+
+  List<Word> findWordsByConditions(
+      {WordMemoryStatus wordMemoryStatus, String lectureId}) {
     if (wordMemoryStatus == null && lectureId == null) {
       return [];
     }
-    var latestReviewHistory =
-        UserService.user.reviewedWordHistory.filter((record) => record.isLatest);
+    var latestReviewHistory = UserService.user.reviewedWordHistory
+        .filter((record) => record.isLatest);
     var filteredHistory = latestReviewHistory.filter((record) {
-      if (wordMemoryStatus != null && wordMemoryStatus != record.wordMemoryStatus) {
+      if (wordMemoryStatus != null &&
+          wordMemoryStatus != record.wordMemoryStatus) {
         return false;
       }
       if (lectureId != null && lectureId != record.lectureId) {
@@ -100,7 +112,10 @@ class LectureService extends GetxService {
     if (id.isBlank) {
       return null;
     } else {
-      return allExamsObx.filter((exam) => id == exam.value.examId).map((e) => e.value).single;
+      return allExamsObx
+          .filter((exam) => id == exam.value.examId)
+          .map((e) => e.value)
+          .single;
     }
   }
 
@@ -120,7 +135,8 @@ class LectureService extends GetxService {
       return [];
     } else {
       return allLecturesObx
-          .filter((lecture) => tags.every((tag) => lecture.value.tags.contains(tag)))
+          .filter((lecture) =>
+              tags.every((tag) => lecture.value.tags.contains(tag)))
           .map((e) => e.value)
           .toList();
     }
