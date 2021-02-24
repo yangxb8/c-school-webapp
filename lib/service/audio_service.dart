@@ -1,4 +1,6 @@
 // 📦 Package imports:
+import 'dart:typed_data';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:get/get.dart';
 
@@ -48,14 +50,14 @@ class AudioService extends GetxService {
     super.onInit();
   }
 
-  /// Play url provided, if other thing is playing, stop it and play the new audio.
+  /// Play byte provided, if other thing is playing, stop it and play the new audio.
   /// If void callback is provided, it will get called after play completed.
   ///
   /// WARN: If play was stopped (other audio want to play etc.), the callback will not be called.
-  Future<void> play(String url, {Function callback, String key = ''}) async {
+  Future<void> play(Uint8List data, {Function callback, String key = ''}) async {
     clientKey.value = key;
     // Always cache the audio
-    await _audioPlayer.play(url, position: 0.seconds);
+    await _audioPlayer.playBytes(data, position: 0.seconds);
     if (callback != null) {
       _playerListener = once(playerState, (_) async => await callback(),
           condition: () => playerState.value == AudioPlayerState.COMPLETED);

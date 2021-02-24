@@ -1,158 +1,180 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cschool_webapp/model/updatable.dart';
+import 'package:cschool_webapp/service/audio_service.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flamingo/flamingo.dart';
 import 'package:flutter/material.dart';
-import 'package:horizontal_data_table/horizontal_data_table.dart';
-import 'package:styled_widget/styled_widget.dart';
-
-import '../../controller/lecture_management_controller.dart';
+import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:get/get.dart';
-import 'editable_cell.dart';
 
-import 'webapp_drawer.dart';
+const double defaultHeight = 100.0;
 
-class DocumentManager<T extends UpdatableDocument<T>,
-    N extends DocumentUpdateController<T>> extends StatelessWidget {
-  /// Usually TitleCell
-  final List<Widget> columns;
+class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateController<T>>
+    extends StatelessWidget {
+  static const _picExtensions = ['jpg', 'jpeg', 'png'];
+  static const _audioExtensions = ['mp3'];
   final N controller;
+  final int index;
   final String name;
+  final double width;
 
-  DocumentManager({@required this.columns, @required this.controller})
-      : name = T.toString();
+  EditableCell(
+      {Key key,
+      @required this.controller,
+      @required this.index,
+      @required this.name,
+      @required this.width})
+      : super(key: key);
 
-  /// Prevent user from exiting if there is uncommit change
-  void onWillPop() async {
-    if (controller.uncommitUpdateExist.isFalse) return Future.value(true);
-    Get.snackbar('尚有以下未保存的修改存在，请保存或放弃修改',
-        controller.modifiedDocuments.keys.map((e) => e.value.id).join(','),
-        duration: 5.seconds);
-    return Future.value(false);
+  Widget buildCellContent() => Obx(() {
+        var value = controller.docs[index].value.properties[name];
+        if (name == 'picHash') {
+          return Container(
+              width: width,
+              height: defaultHeight,
+              child: BlurHash(hash: value, imageFit: BoxFit.cover));
+        } else if (value is String || value is num) {
+          return TitleCell(title: value.toString(), width: width);
+        } else if (value is List<String>) {
+          return TitleCell(
+            title: value.join('/'),
+            width: width,
+          );
+        } else if (value is StorageFile) {
+          var data = controller.getCachedData(controller.docs[index], name);
+          if (data == null) {
+            return Container(
+              width: width,
+              height: defaultHeight,
+            );
+          } else if (name.contains('pic')) {
+            return Image.memory(
+              data,
+              width: width,
+              height: defaultHeight,
+              fit: BoxFit.cover,
+            );
+          } else if (name.contains('audio')) {
+            return IconButton(
+                icon: Icon(Icons.play_arrow), onPressed: () => Get.find<AudioService>().play(data));
+          }
+        }
+        // When null
+        return Container(
+          width: width,
+          height: defaultHeight,
+        );
+      });
+
+  List<String> _calculateExtensions() {
+    if (name.contains('pic')) return _picExtensions;
+    if (name.contains('audio')) return _audioExtensions;
+    return [];
   }
 
   @override
+  Widget build(BuildContext context) => Obx(() {
+        var value = controller.docs[index].value.properties[name];
+        var origin = buildCellContent();
+        Widget input;
+        TextEditingController textInputController;
+        var uploadedFile = PlatformFile().obs;
+        // picHash cannot be modified
+        if (name == 'picHash') {
+          return origin;
+        }
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          child: Container(width: width, height: defaultHeight, child: origin),
+          onTap: () {
+            if (value is String || value is num || value is List<String>) {
+              textInputController = TextEditingController(
+                  text: value is List<String> ? value.join('/') : value.toString());
+              input = TextField(
+                controller: textInputController,
+              );
+            } else if (value == null || value is StorageFile) {
+              input = ObxValue((Rx<PlatformFile> val) {
+                var uploadedWidget;
+                if (val.value.bytes == null) {
+                  uploadedWidget = Container();
+                } else if (name.contains('pic')) {
+                  uploadedWidget = Image.memory(
+                    val.value.bytes,
+                    height: defaultHeight,
+                    width: width,
+                  );
+                } else if (name.contains('audio')) {
+                  uploadedWidget = IconButton(
+                      icon: Icon(Icons.play_arrow),
+                      onPressed: () => Get.find<AudioService>().play(val.value.bytes));
+                }
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    uploadedWidget,
+                    IconButton(
+                        icon: Icon(Icons.cloud_upload),
+                        onPressed: () async {
+                          var result = await FilePicker.platform
+                              .pickFiles(allowedExtensions: _calculateExtensions());
+                          if (result != null) {
+                            val(result.files.single);
+                          }
+                        }),
+                  ],
+                );
+              }, uploadedFile);
+            }
+            return Get.dialog(AlertDialog(
+              title: Text('变更内容'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [Text('变更前:'), origin, Text('变更后:'), input],
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Get.back();
+                    },
+                    child: Text('取消')),
+                TextButton(
+                    onPressed: () async {
+                      if (textInputController != null &&
+                          value.toString() != textInputController.text) {
+                        await controller.handleValueChange(
+                            doc: controller.docs[index], name: name, updated: textInputController.text);
+                      } else if (uploadedFile != null) {
+                        await controller.handleValueChange(
+                            doc: controller.docs[index], name: name, updated: uploadedFile.value);
+                      }
+                      Get.back();
+                    },
+                    child: Text('变更')),
+              ],
+            ));
+          },
+        );
+      });
+}
+
+class TitleCell extends StatelessWidget {
+  final String title;
+  final double width;
+  final Color color;
+
+  const TitleCell({Key key, @required this.title, @required this.width, this.color = Colors.white})
+      : super(key: key);
+
+  @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: onWillPop,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('$name管理').width(100),
-          actions: [
-            IconButton(
-              tooltip: '上传$name',
-              icon: Icon(Icons.cloud_upload),
-              onPressed: () => Get.dialog(ObxValue<Rx<PlatformFile>>(
-                  (uploadedFile) => AlertDialog(
-                      title: Text('上传$name'),
-                      content: IconButton(
-                          icon: Icon(Icons.cloud_upload),
-                          onPressed: () async {
-                            var result = await FilePicker.platform
-                                .pickFiles(allowedExtensions: ['zip']);
-                            uploadedFile(result.files.single);
-                          }),
-                      actions: uploadedFile.value.name == null
-                          ? []
-                          : [
-                              TextButton(
-                                  onPressed: () {
-                                    Get.back();
-                                  },
-                                  child: Text('取消')),
-                              TextButton(
-                                  onPressed: () async {
-                                    await controller
-                                        .handleUpload(uploadedFile.value);
-                                    Get.back();
-                                  },
-                                  child: Text('上传')),
-                            ]),
-                  PlatformFile().obs)),
-            ),
-            Obx(
-              () => IconButton(
-                icon: Icon(Icons.save),
-                onPressed: (controller.processing.isTrue ||
-                        controller.uncommitUpdateExist.isFalse)
-                    ? null
-                    : controller.saveChange,
-                disabledColor: Colors.grey,
-                tooltip: '保存修改',
-              ),
-            ),
-            Obx(
-              () => IconButton(
-                icon: Icon(Icons.cancel),
-                onPressed: (controller.processing.isTrue ||
-                        controller.uncommitUpdateExist.isFalse)
-                    ? null
-                    : controller.cancelChange,
-                disabledColor: Colors.grey,
-                tooltip: '放弃修改',
-              ),
-            )
-          ],
-        ),
-        drawer: const CSchoolWebAppDrawer(),
-        body: Obx(
-          () => HorizontalDataTable(
-            leftHandSideColumnWidth: 100,
-            rightHandSideColumnWidth: 1500,
-            itemCount: controller
-                .docs.length, // Add a Line for insert new row add bottom
-            isFixedHeader: true,
-            headerWidgets: columns,
-            leftSideItemBuilder: (context, index) => EditableCell<T, N>(
-              index: index,
-              name: 'id',
-              width: 100,
-              controller: controller,
-            ),
-            rightSideItemBuilder: (context, index) {
-              var addButton = Obx(() => IconButton(
-                  icon: Icon(Icons.add),
-                  onPressed: controller.processing.isTrue
-                      ? null
-                      : () => controller.addRow(index: index)));
-              var deleteButton = Obx(
-                () => IconButton(
-                    icon: Icon(Icons.indeterminate_check_box_outlined),
-                    onPressed: controller.processing.isTrue
-                        ? null
-                        : () => controller.deleteRow(index)),
-              );
-              var addDeleteRow = Row(
-                children: [
-                  addButton,
-                  deleteButton,
-                ],
-              );
-              return index == controller.docs.length
-                  ? addButton.center()
-                  : Row(
-                      children: [
-                        buildEditableCell(
-                            index: index, name: 'level', width: 50),
-                        buildEditableCell(
-                            index: index, name: 'title', width: 200),
-                        buildEditableCell(
-                            index: index, name: 'description', width: 200),
-                        buildEditableCell(
-                            index: index, name: 'pic', width: 100),
-                        buildEditableCell(
-                            index: index, name: 'picHash', width: 100),
-                        buildEditableCell(
-                            index: index, name: 'tags', width: 200),
-                        Container(
-                          width: 100,
-                          alignment: Alignment.center,
-                          child: addDeleteRow,
-                        )
-                      ],
-                    );
-            },
-          ),
-        ),
-      ),
+    return Container(
+      width: width,
+      alignment: Alignment.center,
+      height: defaultHeight,
+      child: AutoSizeText(title ?? '', maxLines: 2,),
+      color: color,
     );
   }
 }

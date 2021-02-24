@@ -12,7 +12,7 @@ class Splash extends StatelessWidget {
   Future<void> _init() async {
     await initServices();
     // If redirected to splash, Go to original route. Otherwise go to /home
-    await Get.toNamed(Get.arguments ?? '/home');
+    await Get.offNamed(Get.arguments ?? '/home');
   }
 
   @override

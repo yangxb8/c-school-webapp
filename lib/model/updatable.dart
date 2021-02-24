@@ -182,19 +182,13 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>>
   }
 
   /// Add cache to _cachedStorageFile, this is used when new data inserted
-  /// Passing filed names as nullableFields to register null value for field
-  /// This could be useful when new record is inserted and StorageFile been null
+  /// Make sure only StorageFile can be null in UpdatableDocument!
   void registerCache(Rx<T> doc) async {
     final map = <String, Rx<UpdatableStorageFile>>{};
     for (final entry in doc.value.properties.entries) {
-      if (entry.value is StorageFile) {
+      if (entry.value == null || entry.value is StorageFile) {
         map[entry.key] =
             await UpdatableStorageFile.cacheFileAndObserve(entry.value);
-      }
-    }
-    for (final field in nullableFields) {
-      if (!map.containsKey(field)) {
-        map[field] = await UpdatableStorageFile.cacheFileAndObserve(null);
       }
     }
     if (map.isNotEmpty) {

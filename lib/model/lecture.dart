@@ -19,7 +19,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   Lecture({
     String id,
-    int level,
+    int level = 0,
     DocumentSnapshot snapshot,
     Map<String, dynamic> values,
   })  : lectureId = id,
@@ -81,7 +81,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
   @override
   Map<String, dynamic> get properties => {
         'title': title,
-        'lectureId': lectureId,
+        'id': id,
         'description': description,
         'level': level,
         'tags': tags,
