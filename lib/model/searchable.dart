@@ -1,7 +1,7 @@
-// 📦 Package imports:
+// Package imports:
 import 'package:fuzzy/fuzzy.dart';
 
-// 🌎 Project imports:
+// Project imports:
 import '../util/utility.dart';
 
 final defaultFuzzyOption = FuzzyOptions(findAllMatches: true, tokenize: true, threshold: 0.5);

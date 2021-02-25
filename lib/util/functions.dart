@@ -1,10 +1,10 @@
-// 🎯 Dart imports:
+// Dart imports:
 import 'dart:io';
 
-// 🐦 Flutter imports:
+// Flutter imports:
 import 'package:flutter/services.dart';
 
-// 📦 Package imports:
+// Package imports:
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 

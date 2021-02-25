@@ -1,15 +1,15 @@
-// 📦 Package imports:
-import 'package:cschool_webapp/model/updatable.dart';
+// Package imports:
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:get/get.dart';
 
-// 🌎 Project imports:
+// Project imports:
+import 'package:cschool_webapp/model/updatable.dart';
+import '../service/lecture_service.dart';
+import '../util/utility.dart';
+import 'exam_base.dart';
 import 'searchable.dart';
 import 'word.dart';
-import '../service/lecture_service.dart';
-import 'exam_base.dart';
-import '../util/utility.dart';
 
 part 'lecture.flamingo.dart';
 
@@ -19,7 +19,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   Lecture({
     String id,
-    int level,
+    int level = 0,
     DocumentSnapshot snapshot,
     Map<String, dynamic> values,
   })  : lectureId = id,
@@ -81,7 +81,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
   @override
   Map<String, dynamic> get properties => {
         'title': title,
-        'lectureId': lectureId,
+        'id': id,
         'description': description,
         'level': level,
         'tags': tags,

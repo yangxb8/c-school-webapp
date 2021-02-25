@@ -1,11 +1,11 @@
-// 📦 Package imports:
+// Package imports:
 import 'package:get/get.dart';
 
-// 🌎 Project imports:
-import 'logger_service.dart';
+// Project imports:
 import '../model/user.dart';
 import 'api_service.dart';
 import 'lecture_service.dart';
+import 'logger_service.dart';
 
 /// Provide user related service, like create and update user
 class UserService extends GetxService {

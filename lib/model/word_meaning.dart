@@ -1,12 +1,12 @@
-// 🐦 Flutter imports:
+// Flutter imports:
 import 'package:flutter/foundation.dart';
 
-// 📦 Package imports:
+// Package imports:
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:supercharged/supercharged.dart';
 
-// 🌎 Project imports:
+// Project imports:
 import 'word_example.dart';
 
 part 'word_meaning.flamingo.dart';

@@ -1,30 +1,31 @@
-// 🎯 Dart imports:
+// Dart imports:
 import 'dart:async';
 import 'dart:typed_data';
 
-// 📦 Package imports:
+// Flutter imports:
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+// Package imports:
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
-import 'package:supercharged/supercharged.dart';
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flamingo/flamingo.dart';
-// 🐦 Flutter imports:
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:supercharged/supercharged.dart';
 
-import './logger_service.dart';
-// 🌎 Project imports:
+// Project imports:
 import '../model/exam_base.dart';
 import '../model/lecture.dart';
 import '../model/speech_exam.dart';
+import '../model/updatable.dart';
 import '../model/user.dart';
 import '../model/word.dart';
 import '../model/word_meaning.dart';
 import '../util/utility.dart';
-import '../model/updatable.dart';
+import './logger_service.dart';
 
 final logger = LoggerService.logger;
 
