@@ -77,35 +77,39 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
         appBar: AppBar(
           title: Text('$name管理').width(100),
           actions: [
-            IconButton(
-              tooltip: '上传$name',
-              icon: Icon(Icons.cloud_upload),
-              onPressed: () => Get.dialog(ObxValue<Rx<PlatformFile>>(
-                  (uploadedFile) => AlertDialog(
-                      title: Text('上传$name'),
-                      content: IconButton(
-                          icon: Icon(Icons.cloud_upload),
-                          onPressed: () async {
-                            var result =
-                                await FilePicker.platform.pickFiles(allowedExtensions: ['zip']);
-                            uploadedFile(result.files.single);
-                          }),
-                      actions: uploadedFile.value.name == null
-                          ? []
-                          : [
-                              TextButton(
-                                  onPressed: () {
-                                    Get.back();
-                                  },
-                                  child: Text('取消')),
-                              TextButton(
-                                  onPressed: () async {
-                                    await controller.handleUpload(uploadedFile.value);
-                                    Get.back();
-                                  },
-                                  child: Text('上传')),
-                            ]),
-                  PlatformFile().obs)),
+            Obx(
+              () => IconButton(
+                tooltip: '上传$name',
+                icon: Icon(Icons.cloud_upload),
+                onPressed: controller.processing.isTrue
+                    ? null
+                    : () => Get.dialog(ObxValue<Rx<PlatformFile>>(
+                        (uploadedFile) => AlertDialog(
+                            title: Text('上传$name'),
+                            content: IconButton(
+                                icon: Icon(Icons.cloud_upload),
+                                onPressed: () async {
+                                  var result = await FilePicker.platform
+                                      .pickFiles(allowedExtensions: ['zip']);
+                                  uploadedFile(result.files.single);
+                                }),
+                            actions: uploadedFile.value.name == null
+                                ? []
+                                : [
+                                    TextButton(
+                                        onPressed: () {
+                                          Get.back();
+                                        },
+                                        child: Text('取消')),
+                                    TextButton(
+                                        onPressed: () async {
+                                          await controller.handleUpload(uploadedFile.value);
+                                          Get.back();
+                                        },
+                                        child: Text('上传')),
+                                  ]),
+                        PlatformFile().obs)),
+              ),
             ),
             Obx(
               () => IconButton(

@@ -1,4 +1,6 @@
 // Flutter imports:
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 // Package imports:
@@ -29,9 +31,7 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
 
   @override
   Future<void> handleValueChange(
-      {@required Rx<Lecture> doc,
-      @required String name,
-      @required dynamic updated}) async {
+      {@required Rx<Lecture> doc, @required String name, @required dynamic updated}) async {
     // If lectureId is changed, move the row
     if (name == 'lectureId') {
       moveRow(doc, updated);
@@ -56,29 +56,19 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
           break;
         case 'pic':
           final file = updated as PlatformFile;
-          final path =
-              '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
-          var mimeType;
-          if (file.extension == 'png') {
-            mimeType = mimeTypePng;
-          } else if (['jpg', 'jpeg'].contains(file.extension)) {
-            mimeType = mimeTypeJpeg;
-          }
+          final path = '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
           final storageRecord = StorageRecord(
-              path,
-              file.bytes,
-              '${doc.value.lectureId}.${file.extension}',
-              mimeType,
-              {'newPost': 'true'});
-          registerCacheUpdateRecord(
-              doc: doc, name: name, updateRecord: storageRecord);
+              path: path, data: file.bytes, filename: '${doc.value.lectureId}.${file.extension}');
+          registerCacheUpdateRecord(doc: doc, name: name, updateRecords: [storageRecord]);
           try {
+            if (!tryLock()) return;
             var image = img.decodeImage(file.bytes);
-            final picHash = await encodeBlurHash(
-                image.getBytes(), image.width, image.height);
+            final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height);
             val.picHash = picHash;
           } on BlurHashEncodeException catch (e) {
             logger.e(e.message);
+          } finally {
+            unlock();
           }
           break;
         default:
@@ -93,22 +83,20 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
     if (!tryLock()) {
       return;
     }
-    showPasswordRequireDialog(
+    await showPasswordRequireDialog(
         success: () async {
           final files = unArchive(uploadedFile);
-          final csvContent = files.remove('csv') as String;
-          await apiService.firestoreApi
-              .uploadLecturesByCsv(content: csvContent, assets: files);
+          final csvContent = utf8.decode(files.remove('csv'));
+          await apiService.firestoreApi.uploadLecturesByCsv(content: csvContent, assets: files);
           await LectureService.refresh();
         },
         last: () => unlock());
   }
 
   @override
-  void updateStorageFile(
-      {Rx<Lecture> doc, String name, StorageFile storageFile}) {
+  void updateStorageFile({Rx<Lecture> doc, String name, List<StorageFile> storageFiles}) {
     if (name == 'pic') {
-      doc.update((val) => val.pic = storageFile);
+      doc.update((val) => val.pic = storageFiles.single);
     }
   }
 }

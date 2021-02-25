@@ -16,23 +16,37 @@ const double defaultHeight = 100.0;
 
 class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateController<T>>
     extends StatelessWidget {
-  static const _picExtensions = ['jpg', 'jpeg', 'png'];
-  static const _audioExtensions = ['mp3'];
   final N controller;
+
+  /// Index of document
   final int index;
+
+  /// Field name of document
   final String name;
+
+  /// Width of this cell
   final double width;
+
+  /// User usually don't need to care about this field. It's used for setup cell in cell
+  final int subIndex;
 
   EditableCell(
       {Key key,
       @required this.controller,
       @required this.index,
       @required this.name,
-      @required this.width})
+      @required this.width,
+      this.subIndex})
       : super(key: key);
 
+  Widget _emptyCell(double width) => Container(
+        width: width,
+        height: defaultHeight,
+      );
+
   Widget buildCellContent() => ObxValue((Rx<T> doc) {
-        var value = doc.value.properties[name];
+        var value =
+            subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
         if (name == 'picHash') {
           return Container(
               width: width,
@@ -46,13 +60,12 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
             width: width,
           );
         } else if (value is StorageFile) {
-          var data = controller.getCachedData(doc, name);
-          if (data == null) {
-            return Container(
-              width: width,
-              height: defaultHeight,
-            );
-          } else if (name.contains('pic')) {
+          var cache = controller.getCachedData(doc, name);
+          if (cache == null) {
+            return _emptyCell(width);
+          }
+          var data = cache[subIndex ?? 0];
+          if (name.contains('pic')) {
             return Image.memory(
               data,
               width: width,
@@ -63,105 +76,128 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
             return IconButton(
                 icon: Icon(Icons.play_arrow), onPressed: () => Get.find<AudioService>().play(data));
           }
+        } else if (value is List<StorageFile>) {
+          // Audios
+          if (value.isEmpty) {
+            return _emptyCell(width);
+          }
+          return Container(
+            width: width,
+            height: defaultHeight,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(
+                  value.length,
+                  (idx) => EditableCell<T, N>(
+                        controller: controller,
+                        index: index,
+                        name: name,
+                        width: width,
+                        subIndex: index,
+                      )),
+            ),
+          );
         }
         // When null
-        return Container(
-          width: width,
-          height: defaultHeight,
-        );
+        return _emptyCell(width);
       }, controller.docs[index]);
-
-  List<String> _calculateExtensions() {
-    if (name.contains('pic')) return _picExtensions;
-    if (name.contains('audio')) return _audioExtensions;
-    return [];
-  }
 
   @override
-  Widget build(BuildContext context) => ObxValue((Rx<T> doc) {
-        var value = doc.value.properties[name];
-        var origin = buildCellContent();
-        Widget input;
-        TextEditingController textInputController;
-        var uploadedFile = PlatformFile().obs;
-        // picHash cannot be modified
-        if (name == 'picHash') {
-          return origin;
-        }
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          child: Container(width: width, height: defaultHeight, child: origin),
-          onTap: () {
-            if (value is String || value is num || value is List<String>) {
-              textInputController = TextEditingController(
-                  text: value is List<String> ? value.join('/') : value.toString());
-              input = TextField(
-                controller: textInputController,
+  Widget build(BuildContext context) {
+    return ObxValue((RxList<Rx<T>> docs) {
+      // Sometime especially last row, DocumentManager fail to observe the list change
+      // So we stop it here
+      if(index>=docs.length){
+        return Container();
+      }
+      final doc = docs[index];
+      var value =
+          subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
+      var origin = buildCellContent();
+      Widget input;
+      TextEditingController textInputController;
+      var uploadedFile = PlatformFile().obs;
+      // picHash/audio cannot be modified directly.
+      if (name == 'picHash' || value is List<StorageFile>) {
+        return origin;
+      }
+      void onTap() {
+        if (value is String || value is num || value is List<String>) {
+          textInputController = TextEditingController(
+              text: value is List<String> ? value.join('/') : value.toString());
+          input = TextField(
+            controller: textInputController,
+          );
+        } else if (value == null || value is StorageFile) {
+          input = ObxValue((Rx<PlatformFile> val) {
+            var uploadedWidget;
+            if (val.value.bytes == null) {
+              uploadedWidget = Container();
+            } else if (name.contains('pic')) {
+              uploadedWidget = Image.memory(
+                val.value.bytes,
+                height: defaultHeight,
+                width: width,
               );
-            } else if (value == null || value is StorageFile) {
-              input = ObxValue((Rx<PlatformFile> val) {
-                var uploadedWidget;
-                if (val.value.bytes == null) {
-                  uploadedWidget = Container();
-                } else if (name.contains('pic')) {
-                  uploadedWidget = Image.memory(
-                    val.value.bytes,
-                    height: defaultHeight,
-                    width: width,
-                  );
-                } else if (name.contains('audio')) {
-                  uploadedWidget = IconButton(
-                      icon: Icon(Icons.play_arrow),
-                      onPressed: () => Get.find<AudioService>().play(val.value.bytes));
-                }
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    uploadedWidget,
-                    IconButton(
-                        icon: Icon(Icons.cloud_upload),
-                        onPressed: () async {
-                          var result = await FilePicker.platform
-                              .pickFiles(allowedExtensions: _calculateExtensions());
-                          if (result != null) {
-                            val(result.files.single);
-                          }
-                        }),
-                  ],
-                );
-              }, uploadedFile);
+            } else if (name.contains('audio')) {
+              uploadedWidget = IconButton(
+                  icon: Icon(Icons.play_arrow),
+                  onPressed: () => Get.find<AudioService>().play(val.value.bytes));
             }
-            return Get.dialog(AlertDialog(
-              title: Text('变更内容'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [Text('变更前:'), origin, Text('变更后:'), input],
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () {
-                      Get.back();
-                    },
-                    child: Text('取消')),
-                TextButton(
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                uploadedWidget,
+                IconButton(
+                    icon: Icon(Icons.cloud_upload),
                     onPressed: () async {
-                      if (textInputController != null &&
-                          value.toString() != textInputController.text) {
-                        await controller.handleValueChange(
-                            doc: doc, name: name, updated: textInputController.text);
-                      } else if (uploadedFile != null) {
-                        await controller.handleValueChange(
-                            doc: doc, name: name, updated: uploadedFile.value);
+                      var result = await FilePicker.platform.pickFiles(
+                          allowedExtensions: controller.calculateAllowedExtensions(name));
+                      if (result != null) {
+                        val(result.files.single);
                       }
-                      Get.back();
-                    },
-                    child: Text('变更')),
+                    }),
               ],
-            ));
-          },
-        );
-      }, controller.docs[index]);
+            );
+          }, uploadedFile);
+        }
+        Get.dialog(AlertDialog(
+          title: Text('变更内容'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [Text('变更前:'), origin, Text('变更后:'), input],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () {
+                  Get.back();
+                },
+                child: Text('取消')),
+            TextButton(
+                onPressed: () async {
+                  if (textInputController != null && value.toString() != textInputController.text) {
+                    await controller.handleValueChange(
+                        doc: doc, name: name, updated: textInputController.text);
+                  } else if (uploadedFile != null) {
+                    await controller.handleValueChange(
+                        doc: doc, name: name, updated: uploadedFile.value);
+                  }
+                  Get.back();
+                },
+                child: Text('变更')),
+          ],
+        ));
+      }
+
+      ;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        child: Container(width: width, height: defaultHeight, child: origin),
+        onTap: onTap,
+      );
+    }, controller.docs);
+  }
 }
 
 class TitleCell extends StatelessWidget {

@@ -42,7 +42,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   /// Converted from ClassTag enum
   @Field()
-  List<String> tags = [];
+  List<String> tags = <String>[];
 
   /// Hash of lecture pic for display by blurhash
   @Field()
