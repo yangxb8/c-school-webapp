@@ -1,8 +1,12 @@
-import 'package:cschool_webapp/model/lecture.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../controller/lecture_management_controller.dart';
+// Package imports:
 import 'package:get/get.dart';
+
+// Project imports:
+import 'package:cschool_webapp/model/lecture.dart';
+import '../controller/lecture_management_controller.dart';
 import 'ui_view/document_manager.dart';
 
 class LectureManagement extends GetView<LectureManagementController> {

@@ -1,18 +1,23 @@
+// Dart imports:
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+// Flutter imports:
+import 'package:flutter/foundation.dart';
+
+// Package imports:
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supercharged/supercharged.dart';
 
-import '../util/utility.dart';
+// Project imports:
 import '../service/api_service.dart';
 import '../service/logger_service.dart';
+import '../util/utility.dart';
 import '../view/ui_view/password_require.dart';
 
 /// MUST: All field must have initial value not null EXCEPT for StorageFile
@@ -128,7 +133,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>>
   }
 
   /// Add a new doc to docs, this will change all docs below insertion point
-  void addRow({@required int index}) {
+  void addRow({@required int index}) async {
     // docId start from 1, so index+1
     final newDocId = generateIdFromIndex(index + 1);
     for (var i = 0; i < docs.length; i++) {
@@ -141,7 +146,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>>
     final newDoc = Rx<T>(generateDocument(newDocId));
     docs.insert(index, newDoc);
     // Pic is null because it's a new row
-    registerCache(newDoc);
+    await registerCache(newDoc);
   }
 
   /// Delete a doc from docs, this will change all docs below deletion point
@@ -154,6 +159,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>>
       reassignCache(originRef: doc, newRef: movedDoc);
     }
     removeCache(docs.removeAt(index));
+    docs.refresh();
   }
 
   /// When id is changed, doc will be moved to new id. This will cause all docs between

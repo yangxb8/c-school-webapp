@@ -1,9 +1,13 @@
+// Flutter imports:
+import 'package:flutter/cupertino.dart';
+
+// Package imports:
+import 'package:get/get.dart';
+
+// Project imports:
 import 'package:cschool_webapp/controller/lecture_management_controller.dart';
 import 'package:cschool_webapp/view/lecture_management.dart';
 import 'package:cschool_webapp/view/splash.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:get/get.dart';
-
 import 'controller/home_controller.dart';
 import 'service/app_state_service.dart';
 import 'view/home.dart';

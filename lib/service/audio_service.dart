@@ -1,10 +1,11 @@
-// 📦 Package imports:
+// Dart imports:
 import 'dart:typed_data';
 
+// Package imports:
 import 'package:audioplayers/audioplayers.dart';
 import 'package:get/get.dart';
 
-// 🌎 Project imports:
+// Project imports:
 import 'app_state_service.dart';
 
 class AudioService extends GetxService {

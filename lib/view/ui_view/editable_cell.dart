@@ -1,11 +1,16 @@
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:cschool_webapp/model/updatable.dart';
-import 'package:cschool_webapp/service/audio_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:get/get.dart';
+
+// Project imports:
+import 'package:cschool_webapp/model/updatable.dart';
+import 'package:cschool_webapp/service/audio_service.dart';
 
 const double defaultHeight = 100.0;
 
@@ -26,8 +31,8 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
       @required this.width})
       : super(key: key);
 
-  Widget buildCellContent() => Obx(() {
-        var value = controller.docs[index].value.properties[name];
+  Widget buildCellContent() => ObxValue((Rx<T> doc) {
+        var value = doc.value.properties[name];
         if (name == 'picHash') {
           return Container(
               width: width,
@@ -41,7 +46,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
             width: width,
           );
         } else if (value is StorageFile) {
-          var data = controller.getCachedData(controller.docs[index], name);
+          var data = controller.getCachedData(doc, name);
           if (data == null) {
             return Container(
               width: width,
@@ -64,7 +69,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
           width: width,
           height: defaultHeight,
         );
-      });
+      }, controller.docs[index]);
 
   List<String> _calculateExtensions() {
     if (name.contains('pic')) return _picExtensions;
@@ -73,8 +78,8 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
   }
 
   @override
-  Widget build(BuildContext context) => Obx(() {
-        var value = controller.docs[index].value.properties[name];
+  Widget build(BuildContext context) => ObxValue((Rx<T> doc) {
+        var value = doc.value.properties[name];
         var origin = buildCellContent();
         Widget input;
         TextEditingController textInputController;
@@ -144,10 +149,10 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
                       if (textInputController != null &&
                           value.toString() != textInputController.text) {
                         await controller.handleValueChange(
-                            doc: controller.docs[index], name: name, updated: textInputController.text);
+                            doc: doc, name: name, updated: textInputController.text);
                       } else if (uploadedFile != null) {
                         await controller.handleValueChange(
-                            doc: controller.docs[index], name: name, updated: uploadedFile.value);
+                            doc: doc, name: name, updated: uploadedFile.value);
                       }
                       Get.back();
                     },
@@ -156,7 +161,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
             ));
           },
         );
-      });
+      }, controller.docs[index]);
 }
 
 class TitleCell extends StatelessWidget {
@@ -173,7 +178,10 @@ class TitleCell extends StatelessWidget {
       width: width,
       alignment: Alignment.center,
       height: defaultHeight,
-      child: AutoSizeText(title ?? '', maxLines: 2,),
+      child: AutoSizeText(
+        title ?? '',
+        maxLines: 2,
+      ),
       color: color,
     );
   }

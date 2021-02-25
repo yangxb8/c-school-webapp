@@ -1,8 +1,8 @@
-// 🐦 Flutter imports:
+// Package imports:
 import 'package:get/get.dart';
 import 'package:supercharged/supercharged.dart';
 
-// 🌎 Project imports:
+// Project imports:
 import '../model/exam_base.dart';
 import '../model/lecture.dart';
 import '../model/word.dart';

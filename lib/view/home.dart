@@ -1,8 +1,12 @@
-import 'package:cschool_webapp/controller/home_controller.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
-import 'package:styled_widget/styled_widget.dart';
-import 'package:get/get.dart';
 
+// Package imports:
+import 'package:get/get.dart';
+import 'package:styled_widget/styled_widget.dart';
+
+// Project imports:
+import 'package:cschool_webapp/controller/home_controller.dart';
 import 'ui_view/webapp_drawer.dart';
 
 class HomeScreen extends GetView<HomeController> {

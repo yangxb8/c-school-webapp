@@ -1,12 +1,12 @@
-// 🐦 Flutter imports:
+// Flutter imports:
 import 'package:flutter/foundation.dart';
 
-// 📦 Package imports:
+// Package imports:
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 
-// 🌎 Project imports:
+// Project imports:
 import 'word.dart';
 
 part 'user_word_history.flamingo.dart';

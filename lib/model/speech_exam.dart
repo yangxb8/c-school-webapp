@@ -1,9 +1,9 @@
-// 📦 Package imports:
+// Package imports:
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 
-// 🌎 Project imports:
+// Project imports:
 import 'exam_base.dart';
 
 part 'speech_exam.flamingo.dart';

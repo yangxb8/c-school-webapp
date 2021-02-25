@@ -1,15 +1,20 @@
+// Flutter imports:
+import 'package:flutter/foundation.dart';
+
+// Package imports:
 import 'package:blurhash_dart/blurhash_dart.dart';
-import 'package:cschool_webapp/view/ui_view/password_require.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:enum_to_string/enum_to_string.dart';
-import 'package:image/image.dart' as img;
 import 'package:blurhash_dart/src/exception.dart';
+import 'package:enum_to_string/enum_to_string.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flamingo/flamingo.dart';
+import 'package:get/get.dart';
+import 'package:image/image.dart' as img;
+
+// Project imports:
 import 'package:cschool_webapp/model/lecture.dart';
 import 'package:cschool_webapp/service/api_service.dart';
 import 'package:cschool_webapp/service/lecture_service.dart';
-import 'package:flamingo/flamingo.dart';
-import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
+import 'package:cschool_webapp/view/ui_view/password_require.dart';
 import '../model/lecture.dart';
 import '../model/updatable.dart';
 

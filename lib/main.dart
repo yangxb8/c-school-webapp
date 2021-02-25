@@ -1,7 +1,11 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 
+// Project imports:
 import 'routers.dart';
 
 void main() {

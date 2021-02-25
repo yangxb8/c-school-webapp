@@ -1,16 +1,19 @@
-import 'package:cschool_webapp/model/updatable.dart';
-import 'package:cschool_webapp/service/lecture_service.dart';
-import 'package:cschool_webapp/service/logger_service.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:pedantic/pedantic.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
+import 'package:file_picker/file_picker.dart';
+import 'package:get/get.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
+import 'package:pedantic/pedantic.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:supercharged/supercharged.dart';
 
-import 'package:get/get.dart';
+// Project imports:
+import 'package:cschool_webapp/model/updatable.dart';
+import 'package:cschool_webapp/service/lecture_service.dart';
+import 'package:cschool_webapp/service/logger_service.dart';
 import 'editable_cell.dart';
-
 import 'webapp_drawer.dart';
 
 class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateController<T>>
@@ -34,7 +37,10 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
     return Future.value(false);
   }
 
-  Widget get _leftSideEmptyWidget => Container(width: schema['id'],height: defaultHeight,);
+  Widget get _leftSideEmptyWidget => Container(
+        width: schema['id'],
+        height: defaultHeight,
+      );
 
   double get _rightSideWidth =>
       schema.values.reduce((a, b) => a + b) - schema['id'] + addDeleteCellWidth;
@@ -124,61 +130,62 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
           ],
         ),
         drawer: const CSchoolWebAppDrawer(),
-        body: Obx(
-          () => HorizontalDataTable(
-            leftHandSideColumnWidth: schema['id'],
-            rightHandSideColumnWidth: _rightSideWidth,
-            itemCount: controller.docs.length + 1, // Add a Line for insert new row add bottom
-            isFixedHeader: true,
-            headerWidgets: _columns,
-            enablePullToRefresh: true,
-            refreshIndicator: const WaterDropHeader(),
-            onRefresh: _onRefresh,
-            htdRefreshController: _hdtRefreshController,
-            leftSideItemBuilder: (context, index)
-            {
-              if(index == controller.docs.length){
-                return _leftSideEmptyWidget;
-              }
-              return EditableCell<T, N>(
-                index: index,
-                name: 'id',
-                width: schema['id'],
-                controller: controller,
-              );
-            },
-            rightSideItemBuilder: (context, index) {
-              var addButton = Obx(() => IconButton(
-                  icon: Icon(Icons.add),
-                  onPressed:
-                      controller.processing.isTrue ? null : () => controller.addRow(index: index)));
-              var deleteButton = Obx(
-                () => IconButton(
-                    icon: Icon(Icons.indeterminate_check_box_outlined),
-                    onPressed:
-                        controller.processing.isTrue ? null : () => controller.deleteRow(index)),
-              );
-              var addDeleteRow = Row(
-                children: [
-                  addButton,
-                  deleteButton,
-                ],
-              );
-              return index == controller.docs.length
-                  ? addButton.center()
-                  : Row(
+        body: ObxValue(
+            (RxList<Rx<T>> docs) => HorizontalDataTable(
+                  leftHandSideColumnWidth: schema['id'],
+                  rightHandSideColumnWidth: _rightSideWidth,
+                  itemCount: docs.length + 1, // Add a Line for insert new row add bottom
+                  isFixedHeader: true,
+                  headerWidgets: _columns,
+                  enablePullToRefresh: true,
+                  refreshIndicator: const WaterDropHeader(),
+                  onRefresh: _onRefresh,
+                  htdRefreshController: _hdtRefreshController,
+                  leftSideItemBuilder: (context, index) {
+                    if (index == docs.length) {
+                      return _leftSideEmptyWidget;
+                    }
+                    return EditableCell<T, N>(
+                      index: index,
+                      name: 'id',
+                      width: schema['id'],
+                      controller: controller,
+                    );
+                  },
+                  rightSideItemBuilder: (context, index) {
+                    var addButton = Obx(() => IconButton(
+                        icon: Icon(Icons.add),
+                        onPressed: controller.processing.isTrue
+                            ? null
+                            : () async => await controller.addRow(index: index)));
+                    var deleteButton = Obx(
+                      () => IconButton(
+                          icon: Icon(Icons.indeterminate_check_box_outlined),
+                          onPressed: controller.processing.isTrue
+                              ? null
+                              : () => controller.deleteRow(index)),
+                    );
+                    var addDeleteRow = Row(
                       children: [
-                        ..._generateCells(index),
-                        Container(
-                          width: 100,
-                          alignment: Alignment.center,
-                          child: addDeleteRow,
-                        )
+                        addButton,
+                        deleteButton,
                       ],
                     );
-            },
-          ).center(),
-        ),
+                    return index == docs.length
+                        ? addButton.center()
+                        : Row(
+                            children: [
+                              ..._generateCells(index),
+                              Container(
+                                width: 100,
+                                alignment: Alignment.center,
+                                child: addDeleteRow,
+                              )
+                            ],
+                          );
+                  },
+                ).center(),
+            controller.docs),
       ),
     );
   }

@@ -21,6 +21,8 @@
 ///         License:   SIL (https://github.com/FortAwesome/Font-Awesome/blob/master/LICENSE.txt)
 ///         Homepage:  http://fortawesome.github.com/Font-Awesome/
 ///
+
+// Flutter imports:
 import 'package:flutter/widgets.dart';
 
 class CSchool {

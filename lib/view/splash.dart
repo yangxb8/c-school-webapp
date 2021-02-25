@@ -1,11 +1,16 @@
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Package imports:
+import 'package:get/get.dart';
+import 'package:logger/logger.dart';
 import 'package:styled_widget/styled_widget.dart';
+
+// Project imports:
 import 'package:cschool_webapp/service/api_service.dart';
 import 'package:cschool_webapp/service/app_state_service.dart';
 import 'package:cschool_webapp/service/audio_service.dart';
 import 'package:cschool_webapp/service/user_service.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:logger/logger.dart';
 import '../util/utility.dart';
 
 class Splash extends StatelessWidget {

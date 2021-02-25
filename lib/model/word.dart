@@ -1,14 +1,14 @@
-// 📦 Package imports:
-import 'package:cschool_webapp/model/updatable.dart';
+// Package imports:
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:get/get.dart';
 
-// 🌎 Project imports:
+// Project imports:
+import 'package:cschool_webapp/model/updatable.dart';
+import '../service/lecture_service.dart';
 import 'lecture.dart';
 import 'searchable.dart';
 import 'word_meaning.dart';
-import '../service/lecture_service.dart';
 
 part 'word.flamingo.dart';
 
