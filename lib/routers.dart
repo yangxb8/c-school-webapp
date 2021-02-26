@@ -41,7 +41,7 @@ class SplashMiddleware extends GetMiddleware {
     if (AppStateService.isInitialized) {
       return null;
     } else {
-      return RouteSettings(name: '/splash');
+      return RouteSettings(name: '/splash', arguments: route);
     }
   }
 }
