@@ -144,23 +144,22 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
   int get indexOfId => int.parse(id.split('-').last);
 
   @override
-  Map<String, dynamic> calculateProperties()=> {
-      'id': id,
-      '单词': word,
-      '拼音': pinyin,
-      '其他意思ID': _otherMeaningIds,
-      '关联单词ID': _relatedWordIds,
-      '提示': hint,
-      '解释': explanation,
-      '词性': partOfSentence,
-      '图片': pic,
-      '占位图片': picHash,
-      '单词音频': [wordAudioMale, wordAudioFemale],
-      '日语意思': wordMeanings.map((e) => e.meaning).toList(),
-      '例句': wordMeanings.expand((w) => w.examples).toList(),
-      'tags': tags,
-    };
-
+  Map<String, dynamic> get properties => {
+        'id': id,
+        '单词': word,
+        '拼音': pinyin,
+        '其他意思ID': _otherMeaningIds,
+        '关联单词ID': _relatedWordIds,
+        '提示': hint,
+        '解释': explanation,
+        '词性': partOfSentence,
+        '图片': pic,
+        '占位图片': picHash,
+        '单词音频': [wordAudioMale, wordAudioFemale],
+        '日语意思': wordMeanings.map((e) => e.meaning).toList(),
+        '例句': wordMeanings.expand((w) => w.examples).toList(),
+        'tags': tags,
+      };
 }
 
 enum WordMemoryStatus { REMEMBERED, NORMAL, FORGOT, NOT_REVIEWED }

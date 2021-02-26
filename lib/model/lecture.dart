@@ -79,7 +79,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
       };
 
   @override
-  Map<String, dynamic> calculateProperties() => {
+  Map<String, dynamic> get properties => {
         'title': title,
         'id': id,
         'description': description,

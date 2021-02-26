@@ -22,15 +22,6 @@ import '../view/ui_view/password_require.dart';
 
 /// MUST: All field must have initial value not null EXCEPT for StorageFile
 mixin UpdatableDocument<T> on Document<T> {
-  /// Private cache
-  Map<String, dynamic> _properties;
-
-  /// Cached properties
-  Map<String, dynamic> get properties {
-    _properties ??= calculateProperties();
-    return _properties;
-  }
-
   /// Increase Id of this doc
   String get increaseId => generateIdFromIndex(indexOfId + 1);
 
@@ -45,7 +36,7 @@ mixin UpdatableDocument<T> on Document<T> {
 
   /// Get properties of this instance. Example:
   /// 'wordMeanings/0/examples/0/audioMale' => wordMeanings[0].examples[0].audioMale
-  Map<String, dynamic> calculateProperties();
+  Map<String, dynamic> get properties;
 
   /// Get index of id
   int get indexOfId;
@@ -396,7 +387,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
 
   /// Worker to monitor each doc change.
   void _initializeWorkers() {
-    ever(docs, (_) {
+    ever(docs, (val) {
       uncommitUpdateExist.value = true;
     });
     docs.forEach((doc) => ever<T>(doc, (val) {
