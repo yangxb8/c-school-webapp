@@ -67,11 +67,6 @@ class WordManagementController extends DocumentUpdateController<Word> {
         case '例句':
           throw UnimplementedError();
           break;
-        case '例句意思':
-          throw UnimplementedError();
-        case '例句拼音':
-          throw UnimplementedError();
-          break;
         case 'tags':
           val.tags.assignAll(updated.split('/'));
           break;

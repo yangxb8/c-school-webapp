@@ -12,8 +12,6 @@ import 'package:get/get.dart';
 import 'package:cschool_webapp/model/updatable.dart';
 import 'package:cschool_webapp/service/audio_service.dart';
 
-const double defaultHeight = 100.0;
-
 typedef ContentBuilder<T extends UpdatableDocument<T>> = Widget Function(T doc);
 
 /// Only text input is supported now
@@ -21,9 +19,7 @@ typedef InputBuilder<T extends UpdatableDocument<T>> = Widget Function(
     T doc, TextEditingController textInputController);
 
 class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateController<T>>
-    extends StatelessWidget {
-  final N controller;
-
+    extends GetView<N> {
   /// Index of document
   final int index;
 
@@ -32,6 +28,9 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
 
   /// Width of this cell
   final double width;
+
+  /// Height of this cell
+  final double height;
 
   /// User usually don't need to care about this field. It's used for setup cell in cell
   final int subIndex;
@@ -44,80 +43,73 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
 
   EditableCell(
       {Key key,
-      @required this.controller,
       @required this.index,
       @required this.name,
       @required this.width,
+      @required this.height,
       this.subIndex,
       this.contentBuilder,
       this.inputBuilder})
       : super(key: key);
 
-  Widget _emptyCell(double width) => Container(
-        width: width,
-        height: defaultHeight,
-      );
+  Widget _emptyCell() => const SizedBox.expand();
 
-  Widget buildCellContent() => ObxValue((Rx<T> doc) {
-        if (contentBuilder.containsKey(name)) {
-          return contentBuilder[name](doc.value);
-        }
-        var value =
-            subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
-        if (name == 'picHash') {
-          return Container(
-              width: width,
-              height: defaultHeight,
-              child: BlurHash(hash: value, imageFit: BoxFit.cover));
-        } else if (value is String || value is num) {
-          return TitleCell(title: value.toString(), width: width);
-        } else if (value is List<String>) {
-          return TitleCell(
-            title: value.join('/'),
-            width: width,
-          );
-        } else if (value is StorageFile) {
-          var cache = controller.getCachedData(doc, name);
-          if (cache == null) {
-            return _emptyCell(width);
+  Widget buildCellContent() => Container(
+        height: height,
+        width: width,
+        child: ObxValue((Rx<T> doc) {
+          if (contentBuilder.containsKey(name)) {
+            return contentBuilder[name](doc.value);
           }
-          var data = cache[subIndex ?? 0];
-          if (name.contains('pic')) {
-            return Image.memory(
-              data,
+          var value =
+              subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
+          if (name == 'picHash') {
+            return BlurHash(hash: value, imageFit: BoxFit.cover);
+          } else if (value is String || value is num) {
+            return TitleCell(title: value.toString(), width: width);
+          } else if (value is List<String>) {
+            return TitleCell(
+              title: value.join('/'),
               width: width,
-              height: defaultHeight,
-              fit: BoxFit.cover,
             );
-          } else if (name.contains('audio')) {
-            return IconButton(
-                icon: Icon(Icons.play_arrow), onPressed: () => Get.find<AudioService>().play(data));
-          }
-        } else if (value is List<StorageFile>) {
-          // Audios
-          if (value.isEmpty) {
-            return _emptyCell(width);
-          }
-          return Container(
-            width: width,
-            height: defaultHeight,
-            child: Row(
+          } else if (value is StorageFile) {
+            var cache = controller.getCachedData(doc, name);
+            if (cache == null) {
+              return _emptyCell();
+            }
+            var data = cache[subIndex ?? 0];
+            if (name.contains('pic')) {
+              return Image.memory(
+                data,
+                fit: BoxFit.cover,
+              );
+            } else if (name.contains('audio')) {
+              return IconButton(
+                  icon: Icon(Icons.play_arrow),
+                  onPressed: () => Get.find<AudioService>().play(data));
+            }
+          } else if (value is List<StorageFile>) {
+            // Audios
+            if (value.isEmpty) {
+              return _emptyCell();
+            }
+            return Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(
                   value.length,
                   (idx) => EditableCell<T, N>(
-                        controller: controller,
                         index: index,
                         name: name,
                         width: width,
+                        height: height,
                         subIndex: index,
                       )),
-            ),
-          );
-        }
-        // When null
-        return _emptyCell(width);
-      }, controller.docs[index]);
+            );
+          }
+          // When null
+          return _emptyCell();
+        }, controller.docs[index]),
+      );
 
   Widget buildInput(Rx<T> doc,
       {@required TextEditingController textInputController,
@@ -129,6 +121,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
         return inputBuilder[name](doc.value, textInputController);
       }
       if (value is String || value is num || value is List<String>) {
+        textInputController.text = value is List<String> ? value.join('/') : value.toString();
         return TextField(
           controller: textInputController,
         );
@@ -140,7 +133,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
           } else if (name.contains('pic')) {
             uploadedWidget = Image.memory(
               val.value.bytes,
-              height: defaultHeight,
+              height: height,
               width: width,
             );
           } else if (name.contains('audio')) {
@@ -182,9 +175,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
       var value =
           subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
       var origin = buildCellContent();
-      var textInputController =
-          TextEditingController(text: value is List<String> ? value.join('/') : value.toString());
-      ;
+      var textInputController = TextEditingController();
       var uploadedFile = PlatformFile().obs;
       var input =
           buildInput(doc, uploadedFile: uploadedFile, textInputController: textInputController);
@@ -222,9 +213,10 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
       }
 
       ;
+
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
-        child: Container(width: width, height: defaultHeight, child: origin),
+        child: Container(width: width, height: height, child: origin),
         onTap: onTap,
       );
     }, controller.docs);
@@ -234,9 +226,11 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
 class TitleCell extends StatelessWidget {
   final String title;
   final double width;
+  final double height;
   final Color color;
 
-  const TitleCell({Key key, @required this.title, @required this.width, this.color = Colors.white})
+  const TitleCell(
+      {Key key, @required this.title, @required this.width, this.height, this.color = Colors.white})
       : super(key: key);
 
   @override
@@ -244,10 +238,9 @@ class TitleCell extends StatelessWidget {
     return Container(
       width: width,
       alignment: Alignment.center,
-      height: defaultHeight,
+      height: height,
       child: AutoSizeText(
         title ?? '',
-        maxLines: 2,
       ),
       color: color,
     );

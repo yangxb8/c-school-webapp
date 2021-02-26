@@ -22,7 +22,6 @@ class LectureManagement extends GetView<LectureManagementController> {
       'picHash': 100.0
     };
     return DocumentManager<Lecture, LectureManagementController>(
-      controller: controller,
       schema: schema,
     );
   }

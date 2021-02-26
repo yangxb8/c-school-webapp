@@ -34,7 +34,6 @@ class WordManagement extends GetView<WordManagementController>{
     }
 
     return DocumentManager<Word, WordManagementController>(
-      controller: controller,
       schema: schema,
       contentBuilder: {
         '例句':exampleContentBuilder

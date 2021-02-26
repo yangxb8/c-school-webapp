@@ -25,11 +25,10 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
   RxList<Rx<Lecture>> get docs => LectureService.allLecturesObx;
 
   @override
-  // TODO: implement uneditableFields
   List<String> get uneditableFields => ['picHash'];
 
   @override
-  Lecture generateDocument([String id]) => Lecture(id: id??'C0001');
+  Lecture generateDocument([String id]) => Lecture(id: id ?? 'C0001');
 
   @override
   Future<void> handleValueChange(
@@ -98,4 +97,4 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
       doc.update((val) => val.pic = storageFiles.single);
     }
   }
-  }
+}

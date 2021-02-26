@@ -15,14 +15,16 @@ import 'package:cschool_webapp/service/logger_service.dart';
 import 'editable_cell.dart';
 import 'webapp_drawer.dart';
 
+const double defaultHeight = 100.0;
+
 class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateController<T>>
-    extends StatelessWidget {
+    extends GetView<N> {
   /// <name, width>
   static const addDeleteCellWidth = 100.0;
-  static const defaultHeight = 100.0;
   final Map<String, double> schema;
-  final N controller;
+  /// Column name
   final String name;
+  final double height;
 
   /// For building special cell content. Example: <'例句', WordExample content builder>
   final Map<String, ContentBuilder<T>> contentBuilder;
@@ -35,9 +37,9 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
 
   DocumentManager({
     @required this.schema,
-    @required this.controller,
     this.contentBuilder = const {},
     this.inputBuilder = const {},
+    this.height = defaultHeight,
   }) : name = T.toString();
 
   /// Prevent user from exiting if there is uncommit change
@@ -51,7 +53,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
 
   Widget get _leftSideEmptyWidget => Container(
         width: schema['id'],
-        height: defaultHeight,
+        height: height,
       );
 
   double get _rightSideWidth =>
@@ -65,10 +67,10 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
     for (final entry in schema.entries) {
       if (entry.key == 'id') continue;
       cells.add(EditableCell<T, N>(
-        controller: controller,
         name: entry.key,
         index: row,
         width: entry.value,
+        height: height,
         contentBuilder: contentBuilder,
         inputBuilder: inputBuilder,
       ));
@@ -171,7 +173,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                       index: index,
                       name: 'id',
                       width: schema['id'],
-                      controller: controller,
+                      height: height,
                       contentBuilder: contentBuilder,
                       inputBuilder: inputBuilder,
                     );
