@@ -9,11 +9,12 @@ import '../service/lecture_service.dart';
 import 'lecture.dart';
 import 'searchable.dart';
 import 'word_meaning.dart';
+import '../util/utility.dart';
 
 part 'word.flamingo.dart';
 
 /// id is used as primary key for any word
-class Word extends Document<Word> with UpdatableDocument<Word> implements Searchable{
+class Word extends Document<Word> with UpdatableDocument<Word> implements Searchable {
   static LectureService lectureService = Get.find<LectureService>();
 
   Word({
@@ -21,8 +22,7 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
     DocumentSnapshot snapshot,
     Map<String, dynamic> values,
   })  : wordId = id,
-        tags =
-            id == null ? [] : [id.split('-').first], // Assign lectureId to tags
+        tags = id == null ? [] : [id.split('-').first], // Assign lectureId to tags
         super(id: id, snapshot: snapshot, values: values);
 
   @Field()
@@ -89,8 +89,7 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
     }
   }
 
-  set relatedWordIDs(List<String> relatedWordIDs) =>
-      _relatedWordIds = relatedWordIDs;
+  set relatedWordIDs(List<String> relatedWordIDs) => _relatedWordIds = relatedWordIDs;
 
   List<Word> get otherMeanings {
     if (_otherMeaningIds.isBlank) {
@@ -100,8 +99,7 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
     }
   }
 
-  set otherMeaningIds(List<String> otherMeaningIds) =>
-      _otherMeaningIds = otherMeaningIds;
+  set otherMeaningIds(List<String> otherMeaningIds) => _otherMeaningIds = otherMeaningIds;
 
   Lecture get lecture => lectureService.findLectureById(lectureId);
 
@@ -117,33 +115,60 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
 
   @override
   Map<String, dynamic> get searchableProperties => {
-    'wordAsString': wordAsString,
-    'pinyin':pinyin,
-    'wordMeanings': wordMeanings.map((m) => m.meaning),
-    'tags':tags
-  };
+        'wordAsString': wordAsString,
+        'pinyin': pinyin,
+        'wordMeanings': wordMeanings.map((m) => m.meaning),
+        'tags': tags
+      };
 
   @override
-  Word copyWith({String id}) {
-    // TODO: implement copyWith
-    throw UnimplementedError();
+  Word copyWith({String id}) => Word(id: id ?? this.id)
+    ..word = word?.copy
+    ..pinyin = pinyin?.copy
+    ..otherMeaningIds = _otherMeaningIds.copy
+    ..relatedWordIDs = _relatedWordIds.copy
+    ..breakdowns = breakdowns.copy
+    ..hint = hint.substring(0)
+    ..explanation = explanation.substring(0)
+    ..partOfSentence = partOfSentence.substring(0)
+    ..pic = pic.copy()
+    ..picHash = picHash?.substring(0)
+    ..wordAudioFemale = wordAudioFemale.copy()
+    ..wordAudioMale = wordAudioMale.copy()
+    ..wordMeanings = wordMeanings.map((m) => m.copy).toList();
+
+  @override
+  String generateIdFromIndex(int index) => '${id}-${index.toString().padLeft(3, '0')}';
+
+  @override
+  int get indexOfId => int.parse(id.split('-').last);
+
+  @override
+  Map<String, dynamic> get properties {
+    propertiesCache??= {
+      'id': id,
+      '单词': word,
+      '拼音': pinyin,
+      '其他意思ID': _otherMeaningIds,
+      '关联单词ID': _relatedWordIds,
+      '提示': hint,
+      '解释': explanation,
+      '词性': partOfSentence,
+      '图片': pic,
+      '占位图片': picHash,
+      '单词音频': [wordAudioMale, wordAudioFemale],
+      '日语意思': wordMeanings.map((e) => e.meaning).toList(),
+      '例句': wordMeanings.expand((w) => w.examples.map((e) => e.example)).toList(),
+      '例句意思': wordMeanings.expand((w) => w.examples.map((e) => e.meaning)).toList(),
+      '例句拼音': wordMeanings.expand((w) => w.examples.map((e) => e.pinyin.join(' '))).toList(),
+      '例句音频': wordMeanings
+          .expand((w) => w.examples.expand((e) => [e.audioMale, e.audioFemale]))
+          .toList(),
+      'tags': tags,
+    };
+    return propertiesCache;
   }
 
-  @override
-  String generateIdFromIndex(int index) => '$lectureId-${index.toString().padLeft(3,'0')}';
-
-  @override
-  int get indexOfId => int.parse(id.split('-')[1]);
-
-  @override
-  // TODO: implement properties
-  Map<String, dynamic> get properties => throw UnimplementedError();
-
-  @override
-  bool equalsTo(Word other) {
-    // TODO: implement equalsTo
-    throw UnimplementedError();
-  }
 }
 
 enum WordMemoryStatus { REMEMBERED, NORMAL, FORGOT, NOT_REVIEWED }

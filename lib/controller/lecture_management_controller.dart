@@ -21,27 +21,26 @@ import '../model/lecture.dart';
 import '../model/updatable.dart';
 
 class LectureManagementController extends DocumentUpdateController<Lecture> {
-  final ApiService apiService = Get.find();
-
   @override
   RxList<Rx<Lecture>> get docs => LectureService.allLecturesObx;
 
   @override
-  Lecture generateDocument(String id) => Lecture(id: id);
+  // TODO: implement uneditableFields
+  List<String> get uneditableFields => ['picHash'];
+
+  @override
+  Lecture generateDocument([String id]) => Lecture(id: id??'C0001');
 
   @override
   Future<void> handleValueChange(
       {@required Rx<Lecture> doc, @required String name, @required dynamic updated}) async {
-    // If lectureId is changed, move the row
-    if (name == 'lectureId') {
+    // If id is changed, move the row
+    if (name == 'id') {
       moveRow(doc, updated);
       return;
     }
     await doc.update((val) async {
       switch (name) {
-        case 'lectureId':
-          val.lectureId = updated;
-          break;
         case 'title':
           val.title = updated;
           break;
@@ -99,4 +98,4 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
       doc.update((val) => val.pic = storageFiles.single);
     }
   }
-}
+  }

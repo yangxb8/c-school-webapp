@@ -10,8 +10,6 @@ import '../controller/lecture_management_controller.dart';
 import 'ui_view/document_manager.dart';
 
 class LectureManagement extends GetView<LectureManagementController> {
-  static const defaultHeight = 100.0;
-
   @override
   Widget build(BuildContext context) {
     var schema = {

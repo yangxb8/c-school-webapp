@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:get/get.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
-import 'package:pedantic/pedantic.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:supercharged/supercharged.dart';
 
@@ -61,7 +60,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   Future<void> _onRefresh() async {
     try {
       await LectureService.refresh();
-      unawaited(controller.refreshCachedStorageFile());
+      controller.refreshCachedStorageFile();
       _hdtRefreshController.refreshCompleted();
     } catch (e) {
       LoggerService.logger.e(e);

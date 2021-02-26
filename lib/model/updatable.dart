@@ -1,6 +1,8 @@
 // Dart imports:
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:collection/collection.dart';
+import 'package:cschool_webapp/service/lecture_service.dart';
 
 // Flutter imports:
 import 'package:flutter/foundation.dart';
@@ -20,6 +22,8 @@ import '../view/ui_view/password_require.dart';
 
 /// MUST: All field must have initial value not null EXCEPT for StorageFile
 mixin UpdatableDocument<T> on Document<T> {
+  Map<String, dynamic> propertiesCache;
+
   /// Increase Id of this doc
   String get increaseId => generateIdFromIndex(indexOfId + 1);
 
@@ -45,8 +49,27 @@ mixin UpdatableDocument<T> on Document<T> {
   /// create Copy of the document, id MUST be updatable with this method
   T copyWith({String id});
 
-  /// Don't add StorageFile here. Those will be handled by this mixin
-  bool equalsTo(T other);
+  /// Don't add StorageFile here. Those will be handled by DocumentUpdateController
+  bool equalsTo(dynamic other) {
+    if(other is! T){
+      return false;
+    }
+    for(final field in properties.entries){
+      // Don't compare storageFile
+      if(field.value is StorageFile || field.value is List<StorageFile>){
+        continue;
+      }
+      // If list of String
+      if(field.value is List<String>){
+        ListEquality().equals(field.value, other.properties[field.key]);
+      }
+      // String or Number
+      if(field.value != other.properties[field.key]){
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 /// Used for management of updatable documents
@@ -54,11 +77,20 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
   static const picExtensions = ['jpg', 'jpeg', 'png'];
   static const audioExtensions = ['mp3'];
 
+  final ApiService apiService = Get.find();
+
+  final lectureService = Get.find<LectureService>();
+
+  final logger = LoggerService.logger;
+
   /// Get all docs
   RxList<Rx<T>> get docs;
 
-  /// Generate an instance of T
-  T generateDocument(String id);
+  /// Fields uneditable
+  List<String> get uneditableFields;
+
+  /// Id could be null. Generate an instance of T
+  T generateDocument([String id]);
 
   Future<void> handleValueChange(
       {@required Rx<T> doc, @required String name, @required dynamic updated});
@@ -74,7 +106,14 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
   int indexOfId(String id) => generateDocument(id).indexOfId;
 
   /// Convert index to id
-  String generateIdFromIndex(int index) => generateDocument('temp').generateIdFromIndex(index);
+  String generateIdFromIndex(int index) {
+    if(docs.isNotEmpty){
+      return docs.first.value.generateIdFromIndex(index);
+    }
+    else {
+      return generateDocument().generateIdFromIndex(index);
+    }
+  }
 
   /// If file name(with extension) is image file
   bool isImageFileName(String filename) =>
@@ -109,13 +148,15 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
   }
 
   /// Refresh cache for all docs
-  Future<void> refreshCachedStorageFile() async {
+  void refreshCachedStorageFile() {
     if (!tryLock()) return;
+    final count = 0.obs;
+    // Unlock after all cache is registered
+    once(count, (_)=>unlock(), condition: count.value==docs.length);
     _cachedStorageFile.clear();
     for (final doc in docs) {
-      await _registerCache(doc);
+      _registerCache(doc).then((_) => count.value==count.value+1);
     }
-    unlock();
   }
 
   /// Get binary data from cache, cache will be updated by upload.
@@ -297,7 +338,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
 
   /// Add cache to _cachedStorageFile, this is used when new data inserted
   /// Make sure only StorageFile can be null in UpdatableDocument!
-  void _registerCache(Rx<T> doc) async {
+  Future<void> _registerCache(Rx<T> doc) async {
     final map = <String, RxList<Rx<UpdatableStorageFile>>>{};
     for (final entry in doc.value.properties.entries) {
       if (entry.value == null || entry.value is StorageFile) {
