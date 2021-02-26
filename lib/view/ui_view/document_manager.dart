@@ -23,9 +23,22 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   final Map<String, double> schema;
   final N controller;
   final String name;
+
+  /// For building special cell content. Example: <'例句', WordExample content builder>
+  final Map<String, ContentBuilder<T>> contentBuilder;
+
+  /// For building special cell input. Example: <'例句', WordExample input builder>
+  final Map<String, InputBuilder<T>> inputBuilder;
+
+  /// Pull to refresh controller
   final _hdtRefreshController = HDTRefreshController();
 
-  DocumentManager({@required this.schema, @required this.controller}) : name = T.toString();
+  DocumentManager({
+    @required this.schema,
+    @required this.controller,
+    this.contentBuilder = const {},
+    this.inputBuilder = const {},
+  }) : name = T.toString();
 
   /// Prevent user from exiting if there is uncommit change
   Future<bool> onWillPop() async {
@@ -52,7 +65,13 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
     for (final entry in schema.entries) {
       if (entry.key == 'id') continue;
       cells.add(EditableCell<T, N>(
-          controller: controller, name: entry.key, index: row, width: entry.value));
+        controller: controller,
+        name: entry.key,
+        index: row,
+        width: entry.value,
+        contentBuilder: contentBuilder,
+        inputBuilder: inputBuilder,
+      ));
     }
     return cells;
   }
@@ -153,6 +172,8 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                       name: 'id',
                       width: schema['id'],
                       controller: controller,
+                      contentBuilder: contentBuilder,
+                      inputBuilder: inputBuilder,
                     );
                   },
                   rightSideItemBuilder: (context, index) {

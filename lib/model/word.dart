@@ -144,8 +144,7 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
   int get indexOfId => int.parse(id.split('-').last);
 
   @override
-  Map<String, dynamic> get properties {
-    propertiesCache??= {
+  Map<String, dynamic> calculateProperties()=> {
       'id': id,
       '单词': word,
       '拼音': pinyin,
@@ -158,16 +157,9 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
       '占位图片': picHash,
       '单词音频': [wordAudioMale, wordAudioFemale],
       '日语意思': wordMeanings.map((e) => e.meaning).toList(),
-      '例句': wordMeanings.expand((w) => w.examples.map((e) => e.example)).toList(),
-      '例句意思': wordMeanings.expand((w) => w.examples.map((e) => e.meaning)).toList(),
-      '例句拼音': wordMeanings.expand((w) => w.examples.map((e) => e.pinyin.join(' '))).toList(),
-      '例句音频': wordMeanings
-          .expand((w) => w.examples.expand((e) => [e.audioMale, e.audioFemale]))
-          .toList(),
+      '例句': wordMeanings.expand((w) => w.examples).toList(),
       'tags': tags,
     };
-    return propertiesCache;
-  }
 
 }
 

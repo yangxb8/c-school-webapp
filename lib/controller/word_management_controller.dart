@@ -21,7 +21,10 @@ class WordManagementController extends DocumentUpdateController<Word> {
   }
 
   @override
-  Word generateDocument([String id]) => Word(id: id??'$lectureId-001');
+  Word generateDocument([String id]) => Word(id: id ?? '$lectureId-001');
+
+  @override
+  List<String> get uneditableFields => const ['拼音', '占位图片', '单词音频', '例句音频'];
 
   @override
   Future<void> handleUpload(PlatformFile uploadedFile) {
@@ -40,11 +43,34 @@ class WordManagementController extends DocumentUpdateController<Word> {
         case '单词':
           val.word.assignAll((updated as String).split(''));
           break;
-        case 'description':
-          val.description = updated;
+        case '拼音':
+          val.pinyin.assignAll((updated as String).split('-'));
           break;
-        case 'level':
-          val.level = int.parse(updated);
+        case '词性':
+          val.partOfSentence = updated;
+          break;
+        case '日语意思':
+          val.wordMeanings.single.meaning = updated;
+          break;
+        case '提示':
+          val.hint = updated;
+          break;
+        case '解释':
+          val.explanation = updated;
+          break;
+        case '其他意思ID':
+          val.otherMeaningIds = (updated as String).split('/');
+          break;
+        case '关联单词ID':
+          val.relatedWordIDs = (updated as String).split('/');
+          break;
+        case '例句':
+          throw UnimplementedError();
+          break;
+        case '例句意思':
+          throw UnimplementedError();
+        case '例句拼音':
+          throw UnimplementedError();
           break;
         case 'tags':
           val.tags.assignAll(updated.split('/'));
@@ -58,7 +84,8 @@ class WordManagementController extends DocumentUpdateController<Word> {
           try {
             if (!tryLock()) return;
             var image = img.decodeImage(file.bytes);
-            final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height);
+            final picHash = encodeBlurHash(image.getBytes(), image.width, image.height,
+                numCompX: 9, numpCompY: 9);
             val.picHash = picHash;
           } on BlurHashEncodeException catch (e) {
             logger.e(e.message);
@@ -74,25 +101,25 @@ class WordManagementController extends DocumentUpdateController<Word> {
 
   @override
   void updateStorageFile({Rx<Word> doc, String name, List<StorageFile> storageFiles}) {
-    doc.update((val)  {
-      switch(name){
+    doc.update((val) {
+      switch (name) {
         case '图片':
           val.pic = storageFiles.single;
           break;
         case '单词音频': // Male then female
-          assert(storageFiles.length==2);
-          val.wordAudioMale=storageFiles.first;
-          val.wordAudioFemale=storageFiles.last;
+          assert(storageFiles.length == 2);
+          val.wordAudioMale = storageFiles.first;
+          val.wordAudioFemale = storageFiles.last;
           break;
         case '例句音频': // Male then female for every example
           final singleMeaning = val.wordMeanings.single;
-          assert(storageFiles.length==singleMeaning.examples.length*2);
+          assert(storageFiles.length == singleMeaning.examples.length * 2);
           final maleAudio = <StorageFile>[];
           final femaleAudio = <StorageFile>[];
           storageFiles.forEachIndexed((index, file) {
-            if(index%2==0){
+            if (index % 2 == 0) {
               maleAudio.add(file);
-            } else{
+            } else {
               femaleAudio.add(file);
             }
           });

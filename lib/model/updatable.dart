@@ -22,7 +22,14 @@ import '../view/ui_view/password_require.dart';
 
 /// MUST: All field must have initial value not null EXCEPT for StorageFile
 mixin UpdatableDocument<T> on Document<T> {
-  Map<String, dynamic> propertiesCache;
+  /// Private cache
+  Map<String, dynamic> _properties;
+
+  /// Cached properties
+  Map<String, dynamic> get properties {
+    _properties ??= calculateProperties();
+    return _properties;
+  }
 
   /// Increase Id of this doc
   String get increaseId => generateIdFromIndex(indexOfId + 1);
@@ -38,7 +45,7 @@ mixin UpdatableDocument<T> on Document<T> {
 
   /// Get properties of this instance. Example:
   /// 'wordMeanings/0/examples/0/audioMale' => wordMeanings[0].examples[0].audioMale
-  Map<String, dynamic> get properties;
+  Map<String, dynamic> calculateProperties();
 
   /// Get index of id
   int get indexOfId;
@@ -51,20 +58,20 @@ mixin UpdatableDocument<T> on Document<T> {
 
   /// Don't add StorageFile here. Those will be handled by DocumentUpdateController
   bool equalsTo(dynamic other) {
-    if(other is! T){
+    if (other is! T) {
       return false;
     }
-    for(final field in properties.entries){
+    for (final field in properties.entries) {
       // Don't compare storageFile
-      if(field.value is StorageFile || field.value is List<StorageFile>){
+      if (field.value is StorageFile || field.value is List<StorageFile>) {
         continue;
       }
       // If list of String
-      if(field.value is List<String>){
+      if (field.value is List<String>) {
         ListEquality().equals(field.value, other.properties[field.key]);
       }
       // String or Number
-      if(field.value != other.properties[field.key]){
+      if (field.value != other.properties[field.key]) {
         return false;
       }
     }
@@ -107,10 +114,9 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
 
   /// Convert index to id
   String generateIdFromIndex(int index) {
-    if(docs.isNotEmpty){
+    if (docs.isNotEmpty) {
       return docs.first.value.generateIdFromIndex(index);
-    }
-    else {
+    } else {
       return generateDocument().generateIdFromIndex(index);
     }
   }
@@ -150,12 +156,12 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
   /// Refresh cache for all docs
   void refreshCachedStorageFile() {
     if (!tryLock()) return;
-    final count = 0.obs;
     // Unlock after all cache is registered
-    once(count, (_)=>unlock(), condition: count.value==docs.length);
     _cachedStorageFile.clear();
+    once(_cachedStorageFile, (_) => unlock(),
+        condition: () => _cachedStorageFile.length == docs.length);
     for (final doc in docs) {
-      _registerCache(doc).then((_) => count.value==count.value+1);
+      _registerCache(doc);
     }
   }
 

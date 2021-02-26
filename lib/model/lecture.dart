@@ -79,18 +79,15 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
       };
 
   @override
-  Map<String, dynamic> get properties {
-    propertiesCache ??= {
-      'title': title,
-      'id': id,
-      'description': description,
-      'level': level,
-      'tags': tags,
-      'pic': pic,
-      'picHash': picHash
-    };
-    return propertiesCache;
-  }
+  Map<String, dynamic> calculateProperties() => {
+        'title': title,
+        'id': id,
+        'description': description,
+        'level': level,
+        'tags': tags,
+        'pic': pic,
+        'picHash': picHash
+      };
 
   @override
   Lecture copyWith({String id, int level, String title, String description, List<String> tags}) {
@@ -109,5 +106,4 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   @override
   int get indexOfId => int.parse(id.substring(1));
-
 }
