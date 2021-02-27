@@ -29,7 +29,7 @@ class WordManagement extends GetView<WordManagementController>{
       throw UnimplementedError();
     };
 
-    Widget exampleInputBuilder(Word word, TextEditingController textEditingController){
+    Widget exampleInputBuilder(Word word){
       throw UnimplementedError();
     }
 

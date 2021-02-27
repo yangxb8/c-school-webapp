@@ -13,6 +13,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:get/get.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import 'package:supercharged/supercharged.dart';
 
 // Project imports:
@@ -81,6 +82,12 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
 
   final logger = LoggerService.logger;
 
+  /// Nearest formGroup we have
+  final form = FormGroup({}).obs;
+
+  /// File been uploaded
+  final uploadedFile = PlatformFile().obs;
+
   /// Get all docs
   RxList<Rx<T>> get docs;
 
@@ -90,8 +97,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
   /// Id could be null. Generate an instance of T
   T generateDocument([String id]);
 
-  Future<void> handleValueChange(
-      {@required Rx<T> doc, @required String name, @required dynamic updated});
+  Future<void> handleValueChange({@required Rx<T> doc, @required String name});
 
   /// Used for updating storage file
   void updateStorageFile(
@@ -156,6 +162,15 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
     }
   }
 
+  /// Validate form data. If there is no form, also return true
+  bool get validateForm {
+    if(form.value.controls.isEmpty){
+      return true;
+    }
+    // Mark as touched to show validation message
+    form.value.controls.values.forEach((element) => element.markAsTouched());
+    return form.value.controls.values.every((element) => element.valid);
+  }
   /// Get binary data from cache, cache will be updated by upload.
   /// When commit this data is set to StorageFile
   List<Uint8List> getCachedData(Rx<T> doc, String name) {
@@ -388,12 +403,18 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
   /// Worker to monitor each doc change.
   void _initializeWorkers() {
     ever(docs, (val) {
+      _resetInput();
       uncommitUpdateExist.value = true;
     });
     docs.forEach((doc) => ever<T>(doc, (val) {
           uncommitUpdateExist.value = true;
+          _resetInput();
           _logger.d('$doc is updated to ${val.properties}');
         }));
+  }
+
+  void _resetInput() {
+    uploadedFile(PlatformFile());
   }
 }
 

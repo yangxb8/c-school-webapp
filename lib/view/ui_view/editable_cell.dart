@@ -11,12 +11,9 @@ import 'package:get/get.dart';
 // Project imports:
 import 'package:cschool_webapp/model/updatable.dart';
 import 'package:cschool_webapp/service/audio_service.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 
 typedef ContentBuilder<T extends UpdatableDocument<T>> = Widget Function(T doc);
-
-/// Only text input is supported now
-typedef InputBuilder<T extends UpdatableDocument<T>> = Widget Function(
-    T doc, TextEditingController textInputController);
 
 class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateController<T>>
     extends GetView<N> {
@@ -35,11 +32,13 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
   /// User usually don't need to care about this field. It's used for setup cell in cell
   final int subIndex;
 
+  final List<ValidatorFunction> validators;
+
   /// For building special cell content. Example: <'例句', WordExample content builder>
   final Map<String, ContentBuilder<T>> contentBuilder;
 
   /// For building special cell input. Example: <'例句', WordExample input builder>
-  final Map<String, InputBuilder<T>> inputBuilder;
+  final Map<String, ContentBuilder<T>> inputBuilder;
 
   EditableCell(
       {Key key,
@@ -48,6 +47,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
       @required this.width,
       @required this.height,
       this.subIndex,
+      this.validators,
       this.contentBuilder,
       this.inputBuilder})
       : super(key: key);
@@ -111,20 +111,24 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
         }, controller.docs[index]),
       );
 
-  Widget buildInput(Rx<T> doc,
-      {@required TextEditingController textInputController,
-      @required Rx<PlatformFile> uploadedFile}) {
+  Widget buildInput(Rx<T> doc) {
     return ObxValue((Rx<T> doc) {
       var value =
           subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
       if (inputBuilder.containsKey(name)) {
-        return inputBuilder[name](doc.value, textInputController);
+        return inputBuilder[name](doc.value);
       }
       if (value is String || value is num || value is List<String>) {
-        textInputController.text = value is List<String> ? value.join('/') : value.toString();
-        return TextField(
-          controller: textInputController,
-        );
+        controller.form(FormGroup({
+          name: FormControl(
+              value: value is List<String> ? value.join('/') : value.toString(),
+              validators: validators)
+        }));
+        return ReactiveForm(
+            formGroup: controller.form.value,
+            child: ReactiveTextField(
+              formControlName: name,
+            ));
       } else if (value == null || value is StorageFile) {
         return ObxValue((Rx<PlatformFile> val) {
           var uploadedWidget;
@@ -157,7 +161,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
                   }),
             ],
           );
-        }, uploadedFile);
+        }, controller.uploadedFile);
       }
       return Container();
     }, doc);
@@ -172,13 +176,8 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
         return Container();
       }
       final doc = docs[index];
-      var value =
-          subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
       var origin = buildCellContent();
-      var textInputController = TextEditingController();
-      var uploadedFile = PlatformFile().obs;
-      var input =
-          buildInput(doc, uploadedFile: uploadedFile, textInputController: textInputController);
+      var input = buildInput(doc);
       // picHash/audio cannot be modified directly.
       if (controller.uneditableFields.contains(name)) {
         return origin;
@@ -198,14 +197,10 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
                 child: Text('取消')),
             TextButton(
                 onPressed: () async {
-                  if (value is String || value is num || value is List<String>) {
-                    await controller.handleValueChange(
-                        doc: doc, name: name, updated: textInputController.text);
-                  } else if (value == null || value is StorageFile) {
-                    await controller.handleValueChange(
-                        doc: doc, name: name, updated: uploadedFile.value);
+                  if (controller.validateForm) {
+                    await controller.handleValueChange(doc: doc, name: name);
+                    Get.back();
                   }
-                  Get.back();
                 },
                 child: Text('变更')),
           ],

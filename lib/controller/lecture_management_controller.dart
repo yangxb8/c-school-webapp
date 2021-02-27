@@ -31,29 +31,28 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
   Lecture generateDocument([String id]) => Lecture(id: id ?? 'C0001');
 
   @override
-  Future<void> handleValueChange(
-      {@required Rx<Lecture> doc, @required String name, @required dynamic updated}) async {
+  Future<void> handleValueChange({@required Rx<Lecture> doc, @required String name}) async {
     // If id is changed, move the row
     if (name == 'id') {
-      moveRow(doc, updated);
+      moveRow(doc, form.value.controls[name].value);
       return;
     }
     await doc.update((val) async {
       switch (name) {
         case 'title':
-          val.title = updated;
+          val.title = form.value.controls[name].value;
           break;
         case 'description':
-          val.description = updated;
+          val.description = form.value.controls[name].value;
           break;
         case 'level':
-          val.level = int.parse(updated);
+          val.level = int.parse(form.value.controls[name].value);
           break;
         case 'tags':
-          val.tags.assignAll(updated.split('/'));
+          val.tags.assignAll(form.value.controls[name].value.split('/'));
           break;
         case 'pic':
-          final file = updated as PlatformFile;
+          final file = uploadedFile.value;
           final path = '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
           final storageRecord = StorageRecord(
               path: path, data: file.bytes, filename: '${doc.value.lectureId}.${file.extension}');

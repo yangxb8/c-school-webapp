@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:get/get.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:supercharged/supercharged.dart';
 
@@ -21,7 +22,13 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
     extends GetView<N> {
   /// <name, width>
   static const addDeleteCellWidth = 100.0;
+
+  /// Schema of table
   final Map<String, double> schema;
+
+  /// Validator of table
+  final Map<String, List<ValidatorFunction>> validators;
+
   /// Column name
   final String name;
   final double height;
@@ -30,13 +37,14 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   final Map<String, ContentBuilder<T>> contentBuilder;
 
   /// For building special cell input. Example: <'例句', WordExample input builder>
-  final Map<String, InputBuilder<T>> inputBuilder;
+  final Map<String, ContentBuilder<T>> inputBuilder;
 
   /// Pull to refresh controller
   final _hdtRefreshController = HDTRefreshController();
 
   DocumentManager({
     @required this.schema,
+    this.validators = const {},
     this.contentBuilder = const {},
     this.inputBuilder = const {},
     this.height = defaultHeight,
@@ -71,6 +79,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
         index: row,
         width: entry.value,
         height: height,
+        validators: validators.containsKey(entry.key) ? validators[entry.key] : const [],
         contentBuilder: contentBuilder,
         inputBuilder: inputBuilder,
       ));
@@ -174,6 +183,8 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                       name: 'id',
                       width: schema['id'],
                       height: height,
+                      validators:
+                          validators.containsKey('id') ? validators['id'] : [Validators.required],
                       contentBuilder: contentBuilder,
                       inputBuilder: inputBuilder,
                     );

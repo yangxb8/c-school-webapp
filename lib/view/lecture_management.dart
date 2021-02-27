@@ -6,13 +6,16 @@ import 'package:get/get.dart';
 
 // Project imports:
 import 'package:cschool_webapp/model/lecture.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import '../controller/lecture_management_controller.dart';
 import 'ui_view/document_manager.dart';
 
 class LectureManagement extends GetView<LectureManagementController> {
+  static const lectureIdPattern = r'^C\d{4}$';
+
   @override
   Widget build(BuildContext context) {
-    var schema = {
+    const schema = {
       'id': 100.0,
       'title': 100.0,
       'description': 200.0,
@@ -21,8 +24,13 @@ class LectureManagement extends GetView<LectureManagementController> {
       'pic': 100.0,
       'picHash': 100.0
     };
+    var validator = {
+      'id':[Validators.required, Validators.pattern(lectureIdPattern)],
+      'title': [Validators.required]
+    };
     return DocumentManager<Lecture, LectureManagementController>(
       schema: schema,
+      validators: validator,
     );
   }
 }
