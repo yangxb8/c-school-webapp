@@ -4,8 +4,10 @@
 * This service use ApiService and LocalStorageService so they must be
 * initialized first!
 */
+import 'package:get/get.dart';
+
 class AppStateService {
-  static bool isInitialized = false;
+  static RxBool isInitialized = false.obs;
 
   static bool get isDebug {
     var debugMode = false;

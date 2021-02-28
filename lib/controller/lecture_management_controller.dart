@@ -1,4 +1,6 @@
 // Flutter imports:
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 // Package imports:
@@ -19,67 +21,54 @@ import '../model/lecture.dart';
 import '../model/updatable.dart';
 
 class LectureManagementController extends DocumentUpdateController<Lecture> {
-  final ApiService apiService = Get.find();
-
   @override
   RxList<Rx<Lecture>> get docs => LectureService.allLecturesObx;
 
   @override
-  Lecture generateDocument(String id) => Lecture(id: id);
+  Lecture generateDocument([String id]) => Lecture(id: id ?? 'C0001');
 
   @override
-  Future<void> handleValueChange(
-      {@required Rx<Lecture> doc,
-      @required String name,
-      @required dynamic updated}) async {
-    // If lectureId is changed, move the row
-    if (name == 'lectureId') {
+  Future<void> handleValueChange({@required Rx<Lecture> doc, @required String name}) async {
+    if (name == '图片') {
+      doc.update((val) async {
+        final file = uploadedFile.value;
+        final path = '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
+        final storageRecord = StorageRecord(
+            path: path, data: file.bytes, filename: '${doc.value.lectureId}.${file.extension}');
+        registerCacheUpdateRecord(doc: doc, name: name, updateRecords: [storageRecord]);
+        try {
+          if (!tryLock()) return;
+          var image = img.decodeImage(file.bytes);
+          final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height,
+              numCompX: 9, numpCompY: 9);
+          val.picHash = picHash;
+        } on BlurHashEncodeException catch (e) {
+          logger.e(e.message);
+        } finally {
+          unlock();
+        }
+      });
+      return;
+    }
+    final updated = form.value.controls[name].value;
+    // If id is changed, move the row
+    if (name == 'id') {
       moveRow(doc, updated);
       return;
     }
-    await doc.update((val) async {
+    await doc.update((val) {
       switch (name) {
-        case 'lectureId':
-          val.lectureId = updated;
-          break;
-        case 'title':
+        case '标题':
           val.title = updated;
           break;
-        case 'description':
+        case '详细':
           val.description = updated;
           break;
-        case 'level':
+        case '等级':
           val.level = int.parse(updated);
           break;
         case 'tags':
           val.tags.assignAll(updated.split('/'));
-          break;
-        case 'pic':
-          final file = updated as PlatformFile;
-          final path =
-              '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
-          var mimeType;
-          if (file.extension == 'png') {
-            mimeType = mimeTypePng;
-          } else if (['jpg', 'jpeg'].contains(file.extension)) {
-            mimeType = mimeTypeJpeg;
-          }
-          final storageRecord = StorageRecord(
-              path,
-              file.bytes,
-              '${doc.value.lectureId}.${file.extension}',
-              mimeType,
-              {'newPost': 'true'});
-          registerCacheUpdateRecord(
-              doc: doc, name: name, updateRecord: storageRecord);
-          try {
-            var image = img.decodeImage(file.bytes);
-            final picHash = await encodeBlurHash(
-                image.getBytes(), image.width, image.height);
-            val.picHash = picHash;
-          } on BlurHashEncodeException catch (e) {
-            logger.e(e.message);
-          }
           break;
         default:
           return;
@@ -93,22 +82,20 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
     if (!tryLock()) {
       return;
     }
-    showPasswordRequireDialog(
+    await showPasswordRequireDialog(
         success: () async {
           final files = unArchive(uploadedFile);
-          final csvContent = files.remove('csv') as String;
-          await apiService.firestoreApi
-              .uploadLecturesByCsv(content: csvContent, assets: files);
+          final csvContent = utf8.decode(files.remove('csv'));
+          await apiService.firestoreApi.uploadLecturesByCsv(content: csvContent, assets: files);
           await LectureService.refresh();
         },
         last: () => unlock());
   }
 
   @override
-  void updateStorageFile(
-      {Rx<Lecture> doc, String name, StorageFile storageFile}) {
+  void updateStorageFile({Rx<Lecture> doc, String name, List<StorageFile> storageFiles}) {
     if (name == 'pic') {
-      doc.update((val) => val.pic = storageFile);
+      doc.update((val) => val.pic = storageFiles.single);
     }
   }
 }

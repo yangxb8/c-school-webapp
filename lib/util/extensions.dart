@@ -41,6 +41,8 @@ extension StringListUtil on Iterable<String> {
     final fuse = Fuzzy(toList(), options: options);
     return fuse.search(key).isNotEmpty;
   }
+
+  List<String> get copy => map((s) => s.substring(0)).toList();
 }
 
 extension StringUtil on String {

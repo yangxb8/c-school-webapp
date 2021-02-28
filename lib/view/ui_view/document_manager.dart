@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:get/get.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
-import 'package:pedantic/pedantic.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:supercharged/supercharged.dart';
 
@@ -16,17 +16,43 @@ import 'package:cschool_webapp/service/logger_service.dart';
 import 'editable_cell.dart';
 import 'webapp_drawer.dart';
 
+const double defaultHeight = 100.0;
+
 class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateController<T>>
-    extends StatelessWidget {
+    extends GetView<N> {
   /// <name, width>
   static const addDeleteCellWidth = 100.0;
-  static const defaultHeight = 100.0;
+
+  /// Schema of table
   final Map<String, double> schema;
-  final N controller;
+
+  /// Uneditable fields
+  final List<String> uneditableFields;
+
+  /// Validator of table
+  final Map<String, List<ValidatorFunction>> validators;
+
+  /// Column name
   final String name;
+  final double height;
+
+  /// For building special cell content. Example: <'例句', WordExample content builder>
+  final Map<String, ContentBuilder<T>> contentBuilder;
+
+  /// For building special cell input. Example: <'例句', WordExample input builder>
+  final Map<String, ContentBuilder<T>> inputBuilder;
+
+  /// Pull to refresh controller
   final _hdtRefreshController = HDTRefreshController();
 
-  DocumentManager({@required this.schema, @required this.controller}) : name = T.toString();
+  DocumentManager({
+    @required this.schema,
+    this.validators = const {},
+    this.uneditableFields = const [],
+    this.contentBuilder = const {},
+    this.inputBuilder = const {},
+    this.height = defaultHeight,
+  }) : name = T.toString();
 
   /// Prevent user from exiting if there is uncommit change
   Future<bool> onWillPop() async {
@@ -39,7 +65,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
 
   Widget get _leftSideEmptyWidget => Container(
         width: schema['id'],
-        height: defaultHeight,
+        height: height,
       );
 
   double get _rightSideWidth =>
@@ -53,7 +79,15 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
     for (final entry in schema.entries) {
       if (entry.key == 'id') continue;
       cells.add(EditableCell<T, N>(
-          controller: controller, name: entry.key, index: row, width: entry.value));
+        name: entry.key,
+        index: row,
+        width: entry.value,
+        height: height,
+        editable: !uneditableFields.contains(entry.key),
+        validators: validators.containsKey(entry.key) ? validators[entry.key] : const [],
+        contentBuilder: contentBuilder.containsKey(entry.key) ? contentBuilder[entry.key] : null,
+        inputBuilder: inputBuilder.containsKey(entry.key) ? inputBuilder[entry.key] : null,
+      ));
     }
     return cells;
   }
@@ -61,7 +95,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   Future<void> _onRefresh() async {
     try {
       await LectureService.refresh();
-      unawaited(controller.refreshCachedStorageFile());
+      controller.refreshCachedStorageFile();
       _hdtRefreshController.refreshCompleted();
     } catch (e) {
       LoggerService.logger.e(e);
@@ -77,35 +111,39 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
         appBar: AppBar(
           title: Text('$name管理').width(100),
           actions: [
-            IconButton(
-              tooltip: '上传$name',
-              icon: Icon(Icons.cloud_upload),
-              onPressed: () => Get.dialog(ObxValue<Rx<PlatformFile>>(
-                  (uploadedFile) => AlertDialog(
-                      title: Text('上传$name'),
-                      content: IconButton(
-                          icon: Icon(Icons.cloud_upload),
-                          onPressed: () async {
-                            var result =
-                                await FilePicker.platform.pickFiles(allowedExtensions: ['zip']);
-                            uploadedFile(result.files.single);
-                          }),
-                      actions: uploadedFile.value.name == null
-                          ? []
-                          : [
-                              TextButton(
-                                  onPressed: () {
-                                    Get.back();
-                                  },
-                                  child: Text('取消')),
-                              TextButton(
-                                  onPressed: () async {
-                                    await controller.handleUpload(uploadedFile.value);
-                                    Get.back();
-                                  },
-                                  child: Text('上传')),
-                            ]),
-                  PlatformFile().obs)),
+            Obx(
+              () => IconButton(
+                tooltip: '上传$name',
+                icon: Icon(Icons.cloud_upload),
+                onPressed: controller.processing.isTrue
+                    ? null
+                    : () => Get.dialog(ObxValue<Rx<PlatformFile>>(
+                        (uploadedFile) => AlertDialog(
+                            title: Text('上传$name'),
+                            content: IconButton(
+                                icon: Icon(Icons.cloud_upload),
+                                onPressed: () async {
+                                  var result = await FilePicker.platform
+                                      .pickFiles(allowedExtensions: ['zip']);
+                                  uploadedFile(result.files.single);
+                                }),
+                            actions: uploadedFile.value.name == null
+                                ? []
+                                : [
+                                    TextButton(
+                                        onPressed: () {
+                                          Get.back();
+                                        },
+                                        child: Text('取消')),
+                                    TextButton(
+                                        onPressed: () async {
+                                          await controller.handleUpload(uploadedFile.value);
+                                          Get.back();
+                                        },
+                                        child: Text('上传')),
+                                  ]),
+                        PlatformFile().obs)),
+              ),
             ),
             Obx(
               () => IconButton(
@@ -149,7 +187,12 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                       index: index,
                       name: 'id',
                       width: schema['id'],
-                      controller: controller,
+                      height: height,
+                      validators:
+                          validators.containsKey('id') ? validators['id'] : [Validators.required],
+                      contentBuilder:
+                          contentBuilder.containsKey('id') ? contentBuilder['id'] : null,
+                      inputBuilder: inputBuilder.containsKey('id') ? inputBuilder['id'] : null,
                     );
                   },
                   rightSideItemBuilder: (context, index) {

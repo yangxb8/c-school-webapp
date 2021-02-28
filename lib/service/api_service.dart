@@ -168,7 +168,7 @@ class _FirestoreApi {
   }
 
   /// Upload words to firestore and cloud storage
-  void uploadWordsByCsv() async {
+  void uploadWordsByCsv({@required String content, @required Map<String, Uint8List> assets}) async {
     final _storage = Storage()..fetch();
     final _batch = Batch();
     final COLUMN_WORD_PROCESS_STATUS = 0;
@@ -189,15 +189,7 @@ class _FirestoreApi {
     final PINYIN_SEPARATOR = '-';
 
     // Build Word from csv
-    var csv;
-    try {
-      csv = CsvToListConverter().convert(await rootBundle.loadString('assets/upload/words.csv'))
-        ..removeWhere((w) =>
-            WORD_PROCESS_STATUS_UPLOAD != w[COLUMN_WORD_PROCESS_STATUS] || w[COLUMN_WORD] == null);
-    } catch (_) {
-      print('No words.csv found, will skip!');
-      return;
-    }
+    var csv = CsvToListConverter().convert(content)..removeWhere((w) => w[COLUMN_WORD] == null);
 
     var words = csv
         .map((row) => Word(id: row[COLUMN_WORD_ID])
@@ -223,22 +215,18 @@ class _FirestoreApi {
           ..otherMeaningIds = row[COLUMN_OTHER_MEANING_ID].trim().split(SEPARATOR))
         .toList();
 
-    // Checking status
-    _storage.uploader.listen((data) {
-      print('total: ${data.totalBytes} transferred: ${data.bytesTransferred}');
-    });
     // Upload file to cloud storage and save reference
     await words.forEach((word) async {
       // Word image
       final pathWordPic = '${word.documentPath}/${EnumToString.convertToString(WordKey.pic)}';
-      try {
-        final wordPic = await createFileFromAssets('upload/${word.wordId}.${extension_image}');
-        word.pic = await _storage.save(pathWordPic, wordPic,
-            filename: '${word.wordId}.${extension_image}',
-            mimeType: mimeTypeJpeg,
-            metadata: {'newPost': 'true'});
-      } catch (e, _) {
-        logger.i('Not image found for ${word.wordAsString}, will skip');
+      final picExtension =
+          extension_image.where((e) => assets.containsKey('${word.id}.$e')).firstOrNull();
+      if (picExtension != null) {
+        final filename = '${word.id}.$picExtension';
+        final mimeType = picExtension == 'png' ? mimeTypePng : mimeTypeJpeg;
+        final wordPic = assets[filename];
+        word.pic = await _storage.saveFromBytes(pathWordPic, wordPic,
+            filename: filename, mimeType: mimeType, metadata: {'newPost': 'true'});
       }
 
       // Word Audio
@@ -246,15 +234,13 @@ class _FirestoreApi {
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioMale)}';
       final pathWordAudioFemale =
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioFemale)}';
-      final wordAudioFileMale =
-          await createFileFromAssets('upload/${word.wordId}-W-M.${extension_audio}');
-      final wordAudioFileFemale =
-          await createFileFromAssets('upload/${word.wordId}-W-F.${extension_audio}');
-      word.wordAudioMale = await _storage.save(pathWordAudioMale, wordAudioFileMale,
+      final wordAudioFileMale = assets['upload/${word.wordId}-W-M.${extension_audio}'];
+      final wordAudioFileFemale = assets['upload/${word.wordId}-W-F.${extension_audio}'];
+      word.wordAudioMale = await _storage.saveFromBytes(pathWordAudioMale, wordAudioFileMale,
           filename: '${word.wordId}-W-M.${extension_audio}',
           mimeType: mimeTypeMpeg,
           metadata: {'newPost': 'true'});
-      word.wordAudioFemale = await _storage.save(pathWordAudioFemale, wordAudioFileFemale,
+      word.wordAudioFemale = await _storage.saveFromBytes(pathWordAudioFemale, wordAudioFileFemale,
           filename: '${word.wordId}-W-F.${extension_audio}',
           mimeType: mimeTypeMpeg,
           metadata: {'newPost': 'true'});
@@ -271,15 +257,16 @@ class _FirestoreApi {
           final pathExampleFemaleAudio =
               '${word.documentPath}/${EnumToString.convertToString(WordMeaningKey.exampleFemaleAudios)}';
           final exampleAudioFileMale =
-              await createFileFromAssets('upload/${word.wordId}-E${index}-M.${extension_audio}');
+              assets['upload/${word.wordId}-E${index}-M.${extension_audio}'];
           final exampleAudioFileFemale =
-              await createFileFromAssets('upload/${word.wordId}-E${index}-F.${extension_audio}');
-          final maleAudio = await _storage.save(pathExampleMaleAudio, exampleAudioFileMale,
+              assets['upload/${word.wordId}-E${index}-F.${extension_audio}'];
+          final maleAudio = await _storage.saveFromBytes(pathExampleMaleAudio, exampleAudioFileMale,
               filename: '${word.wordId}-E${index}-M.${extension_audio}',
               mimeType: mimeTypeMpeg,
               metadata: {'newPost': 'true'});
           maleAudios.add(maleAudio);
-          final femaleAudio = await _storage.save(pathExampleFemaleAudio, exampleAudioFileFemale,
+          final femaleAudio = await _storage.saveFromBytes(
+              pathExampleFemaleAudio, exampleAudioFileFemale,
               filename: '${word.wordId}-E${index}-F.${extension_audio}',
               mimeType: mimeTypeMpeg,
               metadata: {'newPost': 'true'});
@@ -309,15 +296,7 @@ class _FirestoreApi {
     final columnPicHash = 6;
 
     // Build Word from csv
-    List<List<dynamic>> csv;
-    try {
-      csv = CsvToListConverter().convert(content)
-        ..removeWhere((w) =>
-            w[columnTitle] == null);
-    } catch (_) {
-      print('No lectures.csv found, will skip!');
-      return;
-    }
+    var csv = CsvToListConverter().convert(content)..removeWhere((w) => w[columnTitle] == null);
 
     var lectures = csv.map((row) => Lecture(id: row[columnId], level: row[columnLevel])
       ..title = row[columnTitle].trim() // Title should not be null
@@ -334,12 +313,11 @@ class _FirestoreApi {
       if (extension == null) {
         return;
       }
+      final mimeType = extension == 'png' ? mimeTypePng : mimeTypeJpeg;
       final filename = '${lecture.lectureId}.$extension';
       final lecturePic = assets[filename];
       lecture.pic = await _storage.saveFromBytes(pathClassPic, lecturePic,
-          filename: filename,
-          mimeType: mimeTypeJpeg,
-          metadata: {'newPost': 'true'});
+          filename: filename, mimeType: mimeType, metadata: {'newPost': 'true'});
 
       // Finally, save the word
       _batch.save(lecture);

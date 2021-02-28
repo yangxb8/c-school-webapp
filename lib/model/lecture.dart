@@ -42,7 +42,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   /// Converted from ClassTag enum
   @Field()
-  List<String> tags = [];
+  List<String> tags = <String>[];
 
   /// Hash of lecture pic for display by blurhash
   @Field()
@@ -80,13 +80,13 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   @override
   Map<String, dynamic> get properties => {
-        'title': title,
+        '标题': title,
         'id': id,
-        'description': description,
-        'level': level,
+        '详细': description,
+        '等级': level,
         'tags': tags,
-        'pic': pic,
-        'picHash': picHash
+        '图片': pic,
+        '占位图片': picHash
       };
 
   @override
@@ -106,13 +106,4 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   @override
   int get indexOfId => int.parse(id.substring(1));
-
-  @override
-  bool equalsTo(Lecture other) =>
-      id == other.id &&
-      level == other.level &&
-      title == other.title &&
-      description == other.description &&
-      tags.every((element) => other.tags.contains(element)) &&
-      picHash == other.picHash;
 }

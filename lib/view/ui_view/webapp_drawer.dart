@@ -11,7 +11,8 @@ class CSchoolWebAppDrawer extends StatelessWidget {
     return Drawer(
       child: ListView(
         children: [
-          ListTile(title: Text('课程管理') ,onTap: ()=>Get.toNamed('/manage/lecture'),)
+          ListTile(title: Text('课程管理') ,onTap: ()=>Get.offNamed('/manage/lecture'),),
+          ListTile(title: Text('单词管理') ,onTap: ()=>Get.offNamed('/manage/word'),)
         ],
       ),
     );

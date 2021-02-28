@@ -6,26 +6,32 @@ import 'package:get/get.dart';
 
 // Project imports:
 import 'package:cschool_webapp/model/lecture.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import '../controller/lecture_management_controller.dart';
 import 'ui_view/document_manager.dart';
 
 class LectureManagement extends GetView<LectureManagementController> {
-  static const defaultHeight = 100.0;
+  static const lectureIdPattern = r'^C\d{4}$';
 
   @override
   Widget build(BuildContext context) {
-    var schema = {
+    const schema = {
       'id': 100.0,
-      'title': 100.0,
-      'description': 200.0,
-      'level': 100.0,
+      '标题': 100.0,
+      '详细': 200.0,
+      '等级': 100.0,
       'tags': 150.0,
-      'pic': 100.0,
-      'picHash': 100.0
+      '图片': 100.0,
+      '占位图片': 100.0
+    };
+    var validator = {
+      'id':[Validators.required, Validators.pattern(lectureIdPattern)],
+      'title': [Validators.required]
     };
     return DocumentManager<Lecture, LectureManagementController>(
-      controller: controller,
       schema: schema,
+      validators: validator,
+      uneditableFields: const ['picHash'],
     );
   }
 }
