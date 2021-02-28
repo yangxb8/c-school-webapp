@@ -80,13 +80,13 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
 
   @override
   Map<String, dynamic> get properties => {
-        'title': title,
+        '标题': title,
         'id': id,
-        'description': description,
-        'level': level,
+        '详细': description,
+        '等级': level,
         'tags': tags,
-        'pic': pic,
-        'picHash': picHash
+        '图片': pic,
+        '占位图片': picHash
       };
 
   @override

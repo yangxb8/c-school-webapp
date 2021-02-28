@@ -25,48 +25,50 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
   RxList<Rx<Lecture>> get docs => LectureService.allLecturesObx;
 
   @override
-  List<String> get uneditableFields => ['picHash'];
-
-  @override
   Lecture generateDocument([String id]) => Lecture(id: id ?? 'C0001');
 
   @override
   Future<void> handleValueChange({@required Rx<Lecture> doc, @required String name}) async {
-    // If id is changed, move the row
-    if (name == 'id') {
-      moveRow(doc, form.value.controls[name].value);
+    if (name == '图片') {
+      doc.update((val) async {
+        final file = uploadedFile.value;
+        final path = '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
+        final storageRecord = StorageRecord(
+            path: path, data: file.bytes, filename: '${doc.value.lectureId}.${file.extension}');
+        registerCacheUpdateRecord(doc: doc, name: name, updateRecords: [storageRecord]);
+        try {
+          if (!tryLock()) return;
+          var image = img.decodeImage(file.bytes);
+          final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height,
+              numCompX: 9, numpCompY: 9);
+          val.picHash = picHash;
+        } on BlurHashEncodeException catch (e) {
+          logger.e(e.message);
+        } finally {
+          unlock();
+        }
+      });
       return;
     }
-    await doc.update((val) async {
+    final updated = form.value.controls[name].value;
+    // If id is changed, move the row
+    if (name == 'id') {
+      moveRow(doc, updated);
+      return;
+    }
+    await doc.update((val) {
       switch (name) {
-        case 'title':
-          val.title = form.value.controls[name].value;
+        case '标题':
+          val.title = updated;
           break;
-        case 'description':
-          val.description = form.value.controls[name].value;
+        case '详细':
+          val.description = updated;
           break;
-        case 'level':
-          val.level = int.parse(form.value.controls[name].value);
+        case '等级':
+          val.level = int.parse(updated);
           break;
         case 'tags':
-          val.tags.assignAll(form.value.controls[name].value.split('/'));
-          break;
-        case 'pic':
-          final file = uploadedFile.value;
-          final path = '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
-          final storageRecord = StorageRecord(
-              path: path, data: file.bytes, filename: '${doc.value.lectureId}.${file.extension}');
-          registerCacheUpdateRecord(doc: doc, name: name, updateRecords: [storageRecord]);
-          try {
-            if (!tryLock()) return;
-            var image = img.decodeImage(file.bytes);
-            final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height);
-            val.picHash = picHash;
-          } on BlurHashEncodeException catch (e) {
-            logger.e(e.message);
-          } finally {
-            unlock();
-          }
+          val.tags.assignAll(updated.split('/'));
           break;
         default:
           return;

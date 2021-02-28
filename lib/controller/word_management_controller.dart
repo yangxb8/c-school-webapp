@@ -11,8 +11,14 @@ import 'package:get/get.dart';
 import 'package:get/get_rx/src/rx_types/rx_types.dart';
 
 class WordManagementController extends DocumentUpdateController<Word> {
-  final String lectureId = Get.arguments;
+  String lectureId;
   RxList<Rx<Word>> _docs;
+
+  @override
+  void onInit() {
+    lectureId = Get.currentRoute.split('/').last;
+    super.onInit();
+  }
 
   @override
   RxList<Rx<Word>> get docs {
@@ -24,21 +30,50 @@ class WordManagementController extends DocumentUpdateController<Word> {
   Word generateDocument([String id]) => Word(id: id ?? '$lectureId-001');
 
   @override
-  List<String> get uneditableFields => const ['拼音', '占位图片', '单词音频', '例句音频'];
-
-  @override
   Future<void> handleUpload(PlatformFile uploadedFile) {
     // TODO: implement handleUpload
     throw UnimplementedError();
   }
 
   @override
-  Future<void> handleValueChange({Rx<Word> doc, String name, dynamic updated}) async {
+  Future<void> handleValueChange({Rx<Word> doc, String name}) async {
+    if (name == '图片') {
+      await doc.update((val) async {
+        final file = uploadedFile.value;
+        final path = '${doc.value.documentPath}/${EnumToString.convertToString(WordKey.pic)}';
+        final storageRecord = StorageRecord(
+            path: path, data: file.bytes, filename: '${doc.value.id}.${file.extension}');
+        registerCacheUpdateRecord(doc: doc, name: name, updateRecords: [storageRecord]);
+        try {
+          if (!tryLock()) return;
+          var image = img.decodeImage(file.bytes);
+          final picHash = encodeBlurHash(image.getBytes(), image.width, image.height,
+              numCompX: 9, numpCompY: 9);
+          val.picHash = picHash;
+        } on BlurHashEncodeException catch (e) {
+          logger.e(e.message);
+        } finally {
+          unlock();
+        }
+      });
+      return;
+    }
+    if (name == '例句') {
+      final examples = form.value.controls['例句-中文'].value.split('\n');
+      final pinyins = form.value.controls['例句-拼音'].value.split('\n');
+      final meanings = form.value.controls['例句-日语'].value.split('\n');
+      doc.update((val) {
+        val.wordMeanings.assignAll([val.wordMeanings.single
+            .copyWith(examples: examples, examplePinyins: pinyins, exampleMeanings: meanings)]);
+      });
+      return;
+    }
+    final updated = form.value.controls[name].value;
     if (name == 'id') {
       moveRow(doc, updated);
       return;
     }
-    await doc.update((val) async {
+    await doc.update((val) {
       switch (name) {
         case '单词':
           val.word.assignAll((updated as String).split(''));
@@ -64,29 +99,8 @@ class WordManagementController extends DocumentUpdateController<Word> {
         case '关联单词ID':
           val.relatedWordIDs = (updated as String).split('/');
           break;
-        case '例句':
-          throw UnimplementedError();
-          break;
         case 'tags':
           val.tags.assignAll(updated.split('/'));
-          break;
-        case '图片':
-          final file = updated as PlatformFile;
-          final path = '${doc.value.documentPath}/${EnumToString.convertToString(WordKey.pic)}';
-          final storageRecord = StorageRecord(
-              path: path, data: file.bytes, filename: '${doc.value.id}.${file.extension}');
-          registerCacheUpdateRecord(doc: doc, name: name, updateRecords: [storageRecord]);
-          try {
-            if (!tryLock()) return;
-            var image = img.decodeImage(file.bytes);
-            final picHash = encodeBlurHash(image.getBytes(), image.width, image.height,
-                numCompX: 9, numpCompY: 9);
-            val.picHash = picHash;
-          } on BlurHashEncodeException catch (e) {
-            logger.e(e.message);
-          } finally {
-            unlock();
-          }
           break;
         default:
           return;
@@ -105,21 +119,6 @@ class WordManagementController extends DocumentUpdateController<Word> {
           assert(storageFiles.length == 2);
           val.wordAudioMale = storageFiles.first;
           val.wordAudioFemale = storageFiles.last;
-          break;
-        case '例句音频': // Male then female for every example
-          final singleMeaning = val.wordMeanings.single;
-          assert(storageFiles.length == singleMeaning.examples.length * 2);
-          final maleAudio = <StorageFile>[];
-          final femaleAudio = <StorageFile>[];
-          storageFiles.forEachIndexed((index, file) {
-            if (index % 2 == 0) {
-              maleAudio.add(file);
-            } else {
-              femaleAudio.add(file);
-            }
-          });
-          singleMeaning.exampleMaleAudios.assignAll(maleAudio);
-          singleMeaning.exampleFemaleAudios.assignAll(femaleAudio);
           break;
       }
     });

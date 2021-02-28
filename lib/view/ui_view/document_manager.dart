@@ -26,6 +26,9 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   /// Schema of table
   final Map<String, double> schema;
 
+  /// Uneditable fields
+  final List<String> uneditableFields;
+
   /// Validator of table
   final Map<String, List<ValidatorFunction>> validators;
 
@@ -45,6 +48,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   DocumentManager({
     @required this.schema,
     this.validators = const {},
+    this.uneditableFields = const [],
     this.contentBuilder = const {},
     this.inputBuilder = const {},
     this.height = defaultHeight,
@@ -79,9 +83,10 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
         index: row,
         width: entry.value,
         height: height,
+        editable: !uneditableFields.contains(entry.key),
         validators: validators.containsKey(entry.key) ? validators[entry.key] : const [],
-        contentBuilder: contentBuilder,
-        inputBuilder: inputBuilder,
+        contentBuilder: contentBuilder.containsKey(entry.key) ? contentBuilder[entry.key] : null,
+        inputBuilder: inputBuilder.containsKey(entry.key) ? inputBuilder[entry.key] : null,
       ));
     }
     return cells;
@@ -185,8 +190,9 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                       height: height,
                       validators:
                           validators.containsKey('id') ? validators['id'] : [Validators.required],
-                      contentBuilder: contentBuilder,
-                      inputBuilder: inputBuilder,
+                      contentBuilder:
+                          contentBuilder.containsKey('id') ? contentBuilder['id'] : null,
+                      inputBuilder: inputBuilder.containsKey('id') ? inputBuilder['id'] : null,
                     );
                   },
                   rightSideItemBuilder: (context, index) {

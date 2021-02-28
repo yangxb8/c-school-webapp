@@ -16,8 +16,12 @@ import '../util/utility.dart';
 class Splash extends StatelessWidget {
   Future<void> _init() async {
     await initServices();
-    // If redirected to splash, Go to original route. Otherwise go to /home
-    await Get.offNamed(Get.arguments ?? '/home');
+    if (AppStateService.isInitialized.isTrue) {
+      // If redirected to splash, Go to original route. Otherwise go to /home
+      await Get.offNamed(Get.arguments ?? '/home');
+    } else {
+      once(AppStateService.isInitialized, (_) => Get.offNamed(Get.arguments ?? '/home'));
+    }
   }
 
   @override
@@ -27,13 +31,16 @@ class Splash extends StatelessWidget {
 }
 
 Future<void> initServices() async {
-  if (AppStateService.isInitialized) return;
+  if (AppStateService.isInitialized.isTrue) return;
   await Get.putAsync<ApiService>(() async => await ApiService.getInstance());
   await Get.putAsync<UserService>(() async => await UserService.getInstance());
   Get.lazyPut<AudioService>(() => AudioService());
-  await Get.find<ApiService>()
-      .firebaseAuthApi
-      .loginWithEmail('yangxb10@gmail.com', '199141');
+  await Get.find<ApiService>().firebaseAuthApi.loginWithEmail('yangxb10@gmail.com', '199141');
   Logger.level = AppStateService.isDebug ? Level.debug : Level.error;
-  AppStateService.isInitialized = true;
+  if (UserService.isLectureServiceInitialized.isTrue) {
+    AppStateService.isInitialized.value = true;
+  } else {
+    once(
+        UserService.isLectureServiceInitialized, (_) => AppStateService.isInitialized.value = true);
+  }
 }

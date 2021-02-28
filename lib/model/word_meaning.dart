@@ -67,13 +67,18 @@ class WordMeaning extends Model {
 
   int get exampleCount => _examples.length;
 
-  WordMeaning get copy => WordMeaning(
-      meaning: meaning.substring(0),
-      examples: _examples.copy,
-      exampleMeanings: _exampleMeanings.copy,
-      examplePinyins: _examplePinyins.copy)
-      ..exampleMaleAudios = exampleMaleAudios.map((e) => e.copy()).toList()
-      ..exampleFemaleAudios = exampleFemaleAudios.map((e) => e.copy()).toList();
+  WordMeaning copyWith(
+          {String meaning,
+          List<String> examples,
+          List<String> exampleMeanings,
+          List<String> examplePinyins}) =>
+      WordMeaning(
+          meaning: meaning?? this.meaning.substring(0),
+          examples: examples?? _examples.copy,
+          exampleMeanings: exampleMeanings?? _exampleMeanings.copy,
+          examplePinyins: examplePinyins?? _examplePinyins.copy)
+        ..exampleMaleAudios = exampleMaleAudios.map((e) => e?.copy()).toList()
+        ..exampleFemaleAudios = exampleFemaleAudios.map((e) => e?.copy()).toList();
 
   @override
   Map<String, dynamic> toData() => _$toData(this);

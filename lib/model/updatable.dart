@@ -91,9 +91,6 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
   /// Get all docs
   RxList<Rx<T>> get docs;
 
-  /// Fields uneditable
-  List<String> get uneditableFields;
-
   /// Id could be null. Generate an instance of T
   T generateDocument([String id]);
 

@@ -17,12 +17,12 @@ class LectureManagement extends GetView<LectureManagementController> {
   Widget build(BuildContext context) {
     const schema = {
       'id': 100.0,
-      'title': 100.0,
-      'description': 200.0,
-      'level': 100.0,
+      '标题': 100.0,
+      '详细': 200.0,
+      '等级': 100.0,
       'tags': 150.0,
-      'pic': 100.0,
-      'picHash': 100.0
+      '图片': 100.0,
+      '占位图片': 100.0
     };
     var validator = {
       'id':[Validators.required, Validators.pattern(lectureIdPattern)],
@@ -31,6 +31,7 @@ class LectureManagement extends GetView<LectureManagementController> {
     return DocumentManager<Lecture, LectureManagementController>(
       schema: schema,
       validators: validator,
+      uneditableFields: const ['picHash'],
     );
   }
 }

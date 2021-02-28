@@ -131,14 +131,14 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
     ..hint = hint.substring(0)
     ..explanation = explanation.substring(0)
     ..partOfSentence = partOfSentence.substring(0)
-    ..pic = pic.copy()
+    ..pic = pic?.copy()
     ..picHash = picHash?.substring(0)
-    ..wordAudioFemale = wordAudioFemale.copy()
-    ..wordAudioMale = wordAudioMale.copy()
-    ..wordMeanings = wordMeanings.map((m) => m.copy).toList();
+    ..wordAudioFemale = wordAudioFemale?.copy()
+    ..wordAudioMale = wordAudioMale?.copy()
+    ..wordMeanings = wordMeanings.map((m) => m.copyWith()).toList();
 
   @override
-  String generateIdFromIndex(int index) => '${id}-${index.toString().padLeft(3, '0')}';
+  String generateIdFromIndex(int index) => '${lectureId}-${index.toString().padLeft(3, '0')}';
 
   @override
   int get indexOfId => int.parse(id.split('-').last);
@@ -146,8 +146,8 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
   @override
   Map<String, dynamic> get properties => {
         'id': id,
-        '单词': word,
-        '拼音': pinyin,
+        '单词': wordAsString,
+        '拼音': pinyin.join('-'),
         '其他意思ID': _otherMeaningIds,
         '关联单词ID': _relatedWordIds,
         '提示': hint,
@@ -157,7 +157,7 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
         '占位图片': picHash,
         '单词音频': [wordAudioMale, wordAudioFemale],
         '日语意思': wordMeanings.map((e) => e.meaning).toList(),
-        '例句': wordMeanings.expand((w) => w.examples).toList(),
+        '例句': wordMeanings.isEmpty? []:wordMeanings.single.examples,
         'tags': tags,
       };
 }

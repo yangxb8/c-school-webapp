@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:get/get.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 // Project imports:
 import 'package:cschool_webapp/model/updatable.dart';
@@ -32,13 +33,17 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
   /// User usually don't need to care about this field. It's used for setup cell in cell
   final int subIndex;
 
+  /// If the cell is editable
+  final bool editable;
+
+  /// validator of form data
   final List<ValidatorFunction> validators;
 
   /// For building special cell content. Example: <'例句', WordExample content builder>
-  final Map<String, ContentBuilder<T>> contentBuilder;
+  final ContentBuilder<T> contentBuilder;
 
   /// For building special cell input. Example: <'例句', WordExample input builder>
-  final Map<String, ContentBuilder<T>> inputBuilder;
+  final ContentBuilder<T> inputBuilder;
 
   EditableCell(
       {Key key,
@@ -47,6 +52,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
       @required this.width,
       @required this.height,
       this.subIndex,
+      this.editable = true,
       this.validators,
       this.contentBuilder,
       this.inputBuilder})
@@ -57,13 +63,17 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
   Widget buildCellContent() => Container(
         height: height,
         width: width,
+        decoration: BoxDecoration(border: Border.all()),
         child: ObxValue((Rx<T> doc) {
-          if (contentBuilder.containsKey(name)) {
-            return contentBuilder[name](doc.value);
+          if (contentBuilder != null) {
+            return contentBuilder(doc.value);
           }
           var value =
               subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
-          if (name == 'picHash') {
+          if (name == '占位图片') {
+            if ((value as String).isEmpty) {
+              return _emptyCell();
+            }
             return BlurHash(hash: value, imageFit: BoxFit.cover);
           } else if (value is String || value is num) {
             return TitleCell(title: value.toString(), width: width);
@@ -74,16 +84,16 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
             );
           } else if (value is StorageFile) {
             var cache = controller.getCachedData(doc, name);
-            if (cache == null) {
+            if (cache == null || (subIndex ?? 0) >= cache.length) {
               return _emptyCell();
             }
             var data = cache[subIndex ?? 0];
-            if (name.contains('pic')) {
+            if (name.contains('图片')) {
               return Image.memory(
                 data,
                 fit: BoxFit.cover,
               );
-            } else if (name.contains('audio')) {
+            } else if (name.contains('音频')) {
               return IconButton(
                   icon: Icon(Icons.play_arrow),
                   onPressed: () => Get.find<AudioService>().play(data));
@@ -102,8 +112,8 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
                         name: name,
                         width: width,
                         height: height,
-                        subIndex: index,
-                      )),
+                        subIndex: idx,
+                      ).expanded()),
             );
           }
           // When null
@@ -111,12 +121,12 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
         }, controller.docs[index]),
       );
 
-  Widget buildInput(Rx<T> doc) {
+  Widget buildInput() {
     return ObxValue((Rx<T> doc) {
       var value =
           subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
-      if (inputBuilder.containsKey(name)) {
-        return inputBuilder[name](doc.value);
+      if (inputBuilder != null) {
+        return inputBuilder(doc.value);
       }
       if (value is String || value is num || value is List<String>) {
         controller.form(FormGroup({
@@ -164,7 +174,7 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
         }, controller.uploadedFile);
       }
       return Container();
-    }, doc);
+    }, controller.docs[index]);
   }
 
   @override
@@ -177,9 +187,9 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
       }
       final doc = docs[index];
       var origin = buildCellContent();
-      var input = buildInput(doc);
+      var input = buildInput();
       // picHash/audio cannot be modified directly.
-      if (controller.uneditableFields.contains(name)) {
+      if (!editable) {
         return origin;
       }
       void onTap() {
