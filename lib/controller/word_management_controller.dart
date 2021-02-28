@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:blurhash_dart/blurhash_dart.dart';
 import 'package:blurhash_dart/src/exception.dart';
+import 'package:cschool_webapp/service/lecture_service.dart';
+import 'package:cschool_webapp/view/ui_view/password_require.dart';
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:image/image.dart' as img;
 import 'package:supercharged/supercharged.dart';
@@ -30,9 +34,18 @@ class WordManagementController extends DocumentUpdateController<Word> {
   Word generateDocument([String id]) => Word(id: id ?? '$lectureId-001');
 
   @override
-  Future<void> handleUpload(PlatformFile uploadedFile) {
-    // TODO: implement handleUpload
-    throw UnimplementedError();
+  Future<void> handleUpload(PlatformFile uploadedFile) async{
+    if (!tryLock()) {
+      return;
+    }
+    await showPasswordRequireDialog(
+        success: () async {
+      final files = unArchive(uploadedFile);
+      final csvContent = utf8.decode(files.remove('csv'));
+      await apiService.firestoreApi.uploadWordsByCsv(content: csvContent, assets: files);
+      await LectureService.refresh();
+    },
+    last: () => unlock());
   }
 
   @override

@@ -101,7 +101,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
       {@required Rx<T> doc, @required String name, @required List<StorageFile> storageFiles});
 
   /// Handler upload of Docs
-  Future<void> handleUpload(PlatformFile uploadedFile);
+  Future<void> handleUpload (PlatformFile uploadedFile);
 
   /// Get index of id
   int indexOfId(String id) => generateDocument(id).indexOfId;

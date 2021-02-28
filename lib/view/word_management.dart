@@ -9,7 +9,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 class WordManagement extends GetView<WordManagementController> {
   static const idPattern = r'^C\d{4}-\d{3}$';
-  static const hanziPattern = r'^[\u4e00-\u9fa5]*[。？！]*';
+  static const hanziPattern = r'^[\u4e00-\u9fa5]+[。？！]*$';
 
   static const schema = <String, double>{
     'id': 100.0,
