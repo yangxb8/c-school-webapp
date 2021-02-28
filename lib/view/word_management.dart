@@ -9,32 +9,33 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 class WordManagement extends GetView<WordManagementController> {
   static const idPattern = r'^C\d{4}-\d{3}$';
-  static const exampleChinesePattern = r'^[\u4e00-\u9fa5]*[。？！]*';
+  static const hanziPattern = r'^[\u4e00-\u9fa5]*[。？！]*';
+
+  static const schema = <String, double>{
+    'id': 100.0,
+    '单词': 100,
+    '拼音': 100,
+    '词性': 100,
+    '日语意思': 100,
+    '例句': 400,
+    '提示': 100,
+    '解释': 200,
+    'tags': 100,
+    '图片': 100,
+    '占位图片': 100,
+    '其他意思ID': 100,
+    '关联单词ID': 100,
+  };
+
+  static const uneditableFields = ['占位图片'];
 
   @override
   Widget build(BuildContext context) {
-    print(Get.parameters);
-    var schema = <String, double>{
-      'id': 100.0,
-      '单词': 100,
-      '拼音': 100,
-      '词性': 100,
-      '日语意思': 100,
-      '例句': 400,
-      '提示': 100,
-      '解释': 200,
-      'tags': 100,
-      '图片': 100,
-      '占位图片': 100,
-      '其他意思ID': 100,
-      '关联单词ID': 100,
-    };
-
     var validators = {
       'id': [Validators.required, Validators.pattern(idPattern)],
-      '单词': [Validators.required],
+      '单词': [Validators.required, Validators.pattern(hanziPattern)],
       '日语意思': [Validators.required],
-      '例句-中文': [Validators.pattern(exampleChinesePattern)]
+      '例句-中文': [Validators.pattern(hanziPattern)]
     };
 
     ValidatorFunction _equalLength(String controlName, String matchingControlName) {
@@ -58,7 +59,7 @@ class WordManagement extends GetView<WordManagementController> {
     }
 
     Widget exampleContentBuilder(Word word) {
-      if(word.wordMeanings.isEmpty){
+      if (word.wordMeanings.isEmpty) {
         return const SizedBox.expand();
       }
       final examples = word.wordMeanings.single.examples;
@@ -91,9 +92,10 @@ class WordManagement extends GetView<WordManagementController> {
       final examples = word.wordMeanings.single.examples;
       controller.form(FormGroup({
         '例句-拼音': FormControl(value: examples.map((e) => e.pinyin.join('-')).join('/')),
-        '例句-中文': FormControl(value: examples.map((e) => e.example).join('/')),
+        '例句-中文': FormControl(
+            value: examples.map((e) => e.example).join('/'), validators: validators['例句-中文']),
         '例句-日语': FormControl(value: examples.map((e) => e.meaning).join('/')),
-      },validators: [
+      }, validators: [
         _equalLength('例句-中文', '例句-日语'),
         _equalLength('例句-中文', '例句-拼音')
       ]));
@@ -117,7 +119,7 @@ class WordManagement extends GetView<WordManagementController> {
 
     return DocumentManager<Word, WordManagementController>(
       schema: schema,
-      uneditableFields: const ['拼音', '占位图片'],
+      uneditableFields: uneditableFields,
       validators: validators,
       contentBuilder: {'例句': exampleContentBuilder},
       inputBuilder: {'例句': exampleInputBuilder},

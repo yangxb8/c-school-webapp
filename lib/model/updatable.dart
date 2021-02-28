@@ -149,6 +149,10 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
 
   /// Refresh cache for all docs
   void refreshCachedStorageFile() {
+    // This might happen with empty word list
+    if (docs.isEmpty) {
+      return;
+    }
     if (!tryLock()) return;
     // Unlock after all cache is registered
     _cachedStorageFile.clear();
@@ -161,13 +165,14 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
 
   /// Validate form data. If there is no form, also return true
   bool get validateForm {
-    if(form.value.controls.isEmpty){
+    if (form.value.controls.isEmpty) {
       return true;
     }
     // Mark as touched to show validation message
     form.value.controls.values.forEach((element) => element.markAsTouched());
     return form.value.controls.values.every((element) => element.valid);
   }
+
   /// Get binary data from cache, cache will be updated by upload.
   /// When commit this data is set to StorageFile
   List<Uint8List> getCachedData(Rx<T> doc, String name) {
@@ -378,7 +383,6 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
 
   /// Commit all cache to Storage and update StorageFile accordingly
   Future<void> _commitStorage() async {
-    if (!tryLock()) return;
     for (final entry in _cachedStorageFile.entries) {
       final doc = entry.key;
       for (final field in entry.value.entries) {
@@ -394,7 +398,6 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
         }
       }
     }
-    unlock();
   }
 
   /// Worker to monitor each doc change.

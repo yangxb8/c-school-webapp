@@ -26,18 +26,17 @@ class AppRouter {
           middlewares: [SplashMiddleware()],
           name: '/home',
           page: () => HomeScreen(),
-          binding:
-              BindingsBuilder(() => {Get.lazyPut(() => HomeController())})),
+          binding: BindingsBuilder(() => {Get.lazyPut(() => HomeController())})),
       GetPage(
           middlewares: [SplashMiddleware()],
           name: '/manage/lecture',
           page: () => LectureManagement(),
-          binding: BindingsBuilder(
-              () => {Get.lazyPut(() => LectureManagementController())})),
+          binding: BindingsBuilder(() => {Get.lazyPut(() => LectureManagementController())})),
       GetPage(
-          middlewares: [SplashMiddleware()],
-          name: '/manage/word',
-          page: () => WordManagementHome(),),
+        middlewares: [SplashMiddleware()],
+        name: '/manage/word',
+        page: () => WordManagementHome(),
+      ),
       GetPage(
           middlewares: [SplashMiddleware()],
           name: '/manage/word/:id',
