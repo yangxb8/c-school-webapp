@@ -33,9 +33,9 @@ class Splash extends StatelessWidget {
 Future<void> initServices() async {
   if (AppStateService.isInitialized.isTrue) return;
   await Get.putAsync<ApiService>(() async => await ApiService.getInstance());
+  await Get.find<ApiService>().firebaseAuthApi.loginWithEmail('yangxb10@gmail.com', '199141');
   await Get.putAsync<UserService>(() async => await UserService.getInstance());
   Get.lazyPut<AudioService>(() => AudioService());
-  await Get.find<ApiService>().firebaseAuthApi.loginWithEmail('yangxb10@gmail.com', '199141');
   Logger.level = AppStateService.isDebug ? Level.debug : Level.error;
   if (UserService.isLectureServiceInitialized.isTrue) {
     AppStateService.isInitialized.value = true;

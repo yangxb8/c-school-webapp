@@ -21,8 +21,6 @@ class WordManagement extends GetView<WordManagementController> {
     '提示': 100,
     '解释': 200,
     'tags': 100,
-    '图片': 100,
-    '占位图片': 100,
     '其他意思ID': 100,
     '关联单词ID': 100,
   };
