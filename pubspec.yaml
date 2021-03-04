@@ -22,8 +22,8 @@ environment:
 
 scripts:
   build: pub run build_runner build --delete-conflicting-outputs
-  build-web: flutterb build web --profile --web-renderer html
-  sort: flutterb pub run import_sorter:main
+  build-web: flutter build web --profile --web-renderer html
+  sort: flutter pub run import_sorter:main
 
 dependencies:
   flutter:
