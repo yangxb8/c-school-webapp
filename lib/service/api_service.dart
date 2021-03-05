@@ -171,8 +171,7 @@ class _FirestoreApi {
   void uploadWordsByCsv({@required String content, @required Map<String, Uint8List> assets}) async {
     final _storage = Storage()..fetch();
     final _batch = Batch();
-    final COLUMN_WORD_PROCESS_STATUS = 0;
-    final COLUMN_WORD_ID = 1;
+    final COLUMN_WORD_ID = 0;
     final COLUMN_WORD = COLUMN_WORD_ID + 1;
     final COLUMN_PART_OF_SENTENCE = COLUMN_WORD_ID + 2;
     final COLUMN_MEANING = COLUMN_WORD_ID + 3;
@@ -183,8 +182,7 @@ class _FirestoreApi {
     final COLUMN_EXAMPLE_MEANING = COLUMN_WORD_ID + 9;
     final COLUMN_EXAMPLE_PINYIN = COLUMN_WORD_ID + 10;
     final COLUMN_RELATED_WORD_ID = COLUMN_WORD_ID + 13;
-    final COLUMN_PIC_HASH = COLUMN_WORD_ID + 17;
-    final WORD_PROCESS_STATUS_UPLOAD = 2;
+    final COLUMN_PIC_HASH = COLUMN_WORD_ID + 14;
     final SEPARATOR = '/';
     final PINYIN_SEPARATOR = '-';
 
@@ -293,7 +291,7 @@ class _FirestoreApi {
     final columnLevel = 1;
     final columnTitle = 2;
     final columnDescription = 3;
-    final columnPicHash = 6;
+    final columnPicHash = 4;
 
     // Build Word from csv
     var csv = CsvToListConverter().convert(content)..removeWhere((w) => w[columnTitle] == null);
