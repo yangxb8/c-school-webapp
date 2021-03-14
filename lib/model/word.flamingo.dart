@@ -59,7 +59,7 @@ extension WordKeyExtension on WordKey {
       case WordKey.wordAudioFemale:
         return 'wordAudioFemale';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

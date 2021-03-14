@@ -19,9 +19,9 @@ class WordManagementHome extends StatelessWidget {
       body: ListView.builder(
           itemCount: LectureService.allLecturesObx.length,
           itemBuilder: (_, index) {
-            var lecture = LectureService.allLecturesObx[index].value;
+            var lecture = LectureService.allLecturesObx[index].value!;
             return ListTile(
-              title: Text(lecture.title),
+              title: Text(lecture.title!),
               trailing: Text(lecture.words.length.toString()),
               onTap: () => Get.toNamed('/manage/word/${lecture.id}'),
             );

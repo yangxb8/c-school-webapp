@@ -30,26 +30,26 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
   final double height;
 
   /// User usually don't need to care about this field. It's used for setup cell in cell
-  final int subIndex;
+  final int? subIndex;
 
   /// If the cell is editable
   final bool editable;
 
   /// validator of form data
-  final List<ValidatorFunction> validators;
+  final List<ValidatorFunction>? validators;
 
   /// For building special cell content. Example: <'例句', WordExample content builder>
-  final ContentBuilder<T> contentBuilder;
+  final ContentBuilder<T>? contentBuilder;
 
   /// For building special cell input. Example: <'例句', WordExample input builder>
-  final ContentBuilder<T> inputBuilder;
+  final ContentBuilder<T>? inputBuilder;
 
   EditableCell(
-      {Key key,
-      @required this.index,
-      @required this.name,
-      @required this.width,
-      @required this.height,
+      {Key? key,
+      required this.index,
+      required this.name,
+      required this.width,
+      required this.height,
       this.subIndex,
       this.editable = true,
       this.validators,
@@ -65,22 +65,24 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
         decoration: BoxDecoration(border: Border.all()),
         child: ObxValue((Rx<T> doc) {
           if (contentBuilder != null) {
-            return contentBuilder(doc.value);
+            return contentBuilder!(doc.value!);
           }
-          var value =
-              subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
+          var value = subIndex == null
+              ? doc.value!.properties[name]
+              : doc.value!.properties[name][subIndex];
           if (name == '占位图片') {
             if ((value as String).isEmpty) {
               return _emptyCell();
             }
             return BlurHash(hash: value, imageFit: BoxFit.cover);
           } else if (value is String || value is num) {
-            return TitleCell(title: value.toString(), width: width);
-          } else if (value is List<String>) {
             return TitleCell(
-              title: value.join('/'),
+              title: value.toString(),
               width: width,
+              height: height,
             );
+          } else if (value is List<String>) {
+            return TitleCell(title: value.join('/'), width: width, height: height);
           } else if (value is StorageFile) {
             var cache = controller.getCachedData(doc, name);
             if (cache == null || (subIndex ?? 0) >= cache.length) {
@@ -119,29 +121,29 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
   Widget buildInput() {
     return ObxValue((Rx<T> doc) {
       var value =
-          subIndex == null ? doc.value.properties[name] : doc.value.properties[name][subIndex];
+          subIndex == null ? doc.value!.properties[name] : doc.value!.properties[name][subIndex];
       if (inputBuilder != null) {
-        return inputBuilder(doc.value);
+        return inputBuilder!(doc.value!);
       }
       if (value is String || value is num || value is List<String>) {
         controller.form(FormGroup({
           name: FormControl(
               value: value is List<String> ? value.join('/') : value.toString(),
-              validators: validators)
+              validators: validators!)
         }));
         return ReactiveForm(
-            formGroup: controller.form.value,
+            formGroup: controller.form.value!,
             child: ReactiveTextField(
               formControlName: name,
             ));
       } else if (value == null || value is StorageFile) {
         return ObxValue((Rx<PlatformFile> val) {
           var uploadedWidget;
-          if (val.value.bytes == null) {
+          if (val.value!.bytes == null) {
             uploadedWidget = Container();
           } else if (name.contains('pic')) {
             uploadedWidget = Image.memory(
-              val.value.bytes,
+              val.value!.bytes!,
               height: height,
               width: width,
             );
@@ -220,13 +222,17 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
 }
 
 class TitleCell extends StatelessWidget {
-  final String title;
+  final String? title;
   final double width;
   final double height;
   final Color color;
 
   const TitleCell(
-      {Key key, @required this.title, @required this.width, this.height, this.color = Colors.white})
+      {Key? key,
+      required this.title,
+      required this.width,
+      required this.height,
+      this.color = Colors.white})
       : super(key: key);
 
   @override

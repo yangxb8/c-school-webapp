@@ -58,14 +58,14 @@ class WordManagement extends GetView<WordManagementController> {
         }
 
         return null;
-      };
+      } as Map<String, dynamic> Function(AbstractControl<dynamic>);
     }
 
     Widget exampleContentBuilder(Word word) {
-      if (word.wordMeanings.isEmpty) {
+      if (word.wordMeanings!.isEmpty) {
         return const SizedBox.expand();
       }
-      final examples = word.wordMeanings.single.examples;
+      final examples = word.wordMeanings!.single.examples;
       // If we have too many examples, let it overflow
       return ListView.separated(
         itemCount: examples.length,
@@ -92,11 +92,11 @@ class WordManagement extends GetView<WordManagementController> {
     }
 
     Widget exampleInputBuilder(Word word) {
-      final examples = word.wordMeanings.single.examples;
+      final examples = word.wordMeanings!.single.examples;
       controller.form(FormGroup({
         '例句-拼音': FormControl(value: examples.map((e) => e.pinyin.join('-')).join('/')),
         '例句-中文': FormControl(
-            value: examples.map((e) => e.example).join('/'), validators: validators['例句-中文']),
+            value: examples.map((e) => e.example).join('/'), validators: validators['例句-中文']!),
         '例句-日语': FormControl(value: examples.map((e) => e.meaning).join('/')),
       }, validators: [
         _equalLength('例句-中文', '例句-日语'),
@@ -104,7 +104,7 @@ class WordManagement extends GetView<WordManagementController> {
       ]));
 
       return ReactiveForm(
-          formGroup: controller.form.value,
+          formGroup: controller.form.value!,
           child: Column(
             children: [
               ReactiveTextField(

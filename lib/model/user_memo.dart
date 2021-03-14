@@ -1,7 +1,6 @@
-// Flutter imports:
-import 'package:flutter/foundation.dart';
+// 🐦 Flutter imports:
 
-// Package imports:
+// 📦 Package imports:
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 
@@ -9,22 +8,22 @@ part 'user_memo.flamingo.dart';
 
 class UserMemo extends Model {
   UserMemo({
-    @required this.title,
-    @required this.content,
-    @required this.relatedClassId,
-    @required this.timestamp,
-    Map<String, dynamic> values,
+    this.title,
+    this.content,
+    this.relatedClassId,
+    this.timestamp,
+    Map<String, dynamic>? values,
   }) : super(values: values);
 
   @Field()
-  String title;
+  String? title;
   @Field()
-  String content;
+  String? content;
   @Field()
-  String relatedClassId;
+  String? relatedClassId;
 
   @Field()
-  Timestamp timestamp;
+  Timestamp? timestamp;
 
   @override
   Map<String, dynamic> toData() => _$toData(this);

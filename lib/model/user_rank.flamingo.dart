@@ -20,7 +20,7 @@ extension UserRankKeyExtension on UserRankKey {
       case UserRankKey.timestamp:
         return 'timestamp';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

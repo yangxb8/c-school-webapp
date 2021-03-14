@@ -10,24 +10,26 @@ part 'speech_exam.flamingo.dart';
 
 class SpeechExam extends Exam<SpeechExam>{
   SpeechExam({
-    String id,
-    DocumentSnapshot snapshot,
-    Map<String, dynamic> values,
+    String? id,
+    DocumentSnapshot? snapshot,
+    Map<String, dynamic>? values,
   })  : super(id: id, snapshot: snapshot, values: values);
 
   /// Audio data for the original speech
   @StorageField()
-  StorageFile refAudio;
+  StorageFile? refAudio;
+  @Field()
+  List<int>? refAudioTimeSeries = [];
   /// Text version of refAudio
   @Field()
-  String refText;
+  String? refText;
   /// Speech Evaluation mode
   @Field()
-  String _mode;
+  String? _mode;
 
-   SpeechExamMode get mode =>
-      EnumToString.fromString(SpeechExamMode.values, _mode);
-  set mode(SpeechExamMode mode) => _mode = EnumToString.convertToString(mode);
+   SpeechExamMode? get mode =>
+      EnumToString.fromString(SpeechExamMode.values, _mode!);
+  set mode(SpeechExamMode? mode) => _mode = EnumToString.convertToString(mode);
 
   @override
   Map<String, dynamic> toData() {

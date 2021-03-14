@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class FancySeparator extends StatelessWidget {
   const FancySeparator({
-    Key key, @required this.middleWidget,
+    Key? key, required this.middleWidget,
   }) : super(key: key);
 
   final Widget middleWidget;

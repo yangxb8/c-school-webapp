@@ -1,40 +1,39 @@
-// Flutter imports:
-import 'package:flutter/foundation.dart';
-
-// Package imports:
+// 📦 Package imports:
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 
-// Project imports:
-import 'word.dart';
+// 🌎 Project imports:
+import 'package:cschool_webapp/model/word.dart';
 
 part 'user_word_history.flamingo.dart';
 
 class WordHistory extends Model {
   WordHistory({
-    @required this.wordId,
-    @required WordMemoryStatus wordMemoryStatus,
-    @required this.timestamp,
-    @required this.isLatest,
-    Map<String, dynamic> values,
-  })  : _wordMemoryStatus = EnumToString.convertToString(wordMemoryStatus),
+    this.wordId,
+    WordMemoryStatus? wordMemoryStatus,
+    this.timestamp,
+    this.isLatest,
+    Map<String, dynamic>? values,
+  })  : _wordMemoryStatus =
+            wordMemoryStatus == null ? null : EnumToString.convertToString(wordMemoryStatus),
         super(values: values);
 
   @Field()
-  String wordId;
+  String? wordId;
   @Field()
   // ignore: prefer_final_fields
-  String _wordMemoryStatus;
+  String? _wordMemoryStatus;
   @Field()
-  Timestamp timestamp;
+  Timestamp? timestamp;
   @Field()
-  bool isLatest;
+  bool? isLatest;
 
-  WordMemoryStatus get wordMemoryStatus =>
-      EnumToString.fromString(WordMemoryStatus.values, _wordMemoryStatus);
+  WordMemoryStatus? get wordMemoryStatus => _wordMemoryStatus == null
+      ? null
+      : EnumToString.fromString(WordMemoryStatus.values, _wordMemoryStatus!);
 
-  String get lectureId => wordId.split('-').first;
+  String get lectureId => wordId!.split('-').first;
 
   @override
   Map<String, dynamic> toData() => _$toData(this);

@@ -8,8 +8,8 @@ extension StorageExtension on Storage {
   Future<StorageFile> saveFromBytes(
     String folderPath,
     Uint8List data, {
-    String filename,
-    String mimeType = mimeTypeApplicationOctetStream,
+    String? filename,
+    String? mimeType = mimeTypeApplicationOctetStream,
     Map<String, String> metadata = const <String, String>{},
     Map<String, dynamic> additionalData = const <String, dynamic>{},
   }) async {

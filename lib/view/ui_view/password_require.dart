@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 // Package imports:
 import 'package:get/get.dart';
 
-Future<void> showPasswordRequireDialog({Function success, Function fail, Function last}) async{
+Future<void> showPasswordRequireDialog({Function? success, Function? fail, Function? last}) async{
   const pwd = 'miaojiangfangpi';
   final textInputController = TextEditingController();
 

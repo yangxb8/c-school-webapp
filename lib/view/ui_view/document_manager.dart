@@ -1,4 +1,6 @@
 // Flutter imports:
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 // Package imports:
@@ -46,7 +48,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   final _hdtRefreshController = HDTRefreshController();
 
   DocumentManager({
-    @required this.schema,
+    required this.schema,
     this.validators = const {},
     this.uneditableFields = const [],
     this.contentBuilder = const {},
@@ -57,8 +59,8 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
   /// Prevent user from exiting if there is uncommit change
   Future<bool> onWillPop() async {
     if (controller.uncommitUpdateExist.isFalse) return Future.value(true);
-    Get.snackbar(
-        '尚有以下未保存的修改存在，请保存或放弃修改', controller.modifiedDocuments.keys.map((e) => e.value.id).join(','),
+    Get.snackbar('尚有以下未保存的修改存在，请保存或放弃修改',
+        controller.modifiedDocuments.keys.map((e) => e.value!.id).join(','),
         duration: 5.seconds);
     return Future.value(false);
   }
@@ -69,10 +71,10 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
       );
 
   double get _rightSideWidth =>
-      schema.values.reduce((a, b) => a + b) - schema['id'] + addDeleteCellWidth;
+      schema.values.reduce((a, b) => a + b) - schema['id']! + addDeleteCellWidth;
 
   List<Widget> get _columns =>
-      schema.entries.map((e) => TitleCell(title: e.key, width: e.value)).toList();
+      schema.entries.map((e) => TitleCell(title: e.key, width: e.value, height: height)).toList();
 
   List<Widget> _generateCells(int row) {
     final cells = <Widget>[];
@@ -115,7 +117,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
               () => IconButton(
                 tooltip: '上传$name',
                 icon: Icon(Icons.cloud_upload),
-                onPressed: controller.processing.isTrue
+                onPressed: controller.processing.isTrue!
                     ? null
                     : () => Get.dialog(ObxValue<Rx<PlatformFile>>(
                         (uploadedFile) => AlertDialog(
@@ -123,11 +125,11 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                             content: IconButton(
                                 icon: Icon(Icons.cloud_upload),
                                 onPressed: () async {
-                                  var result = await FilePicker.platform
-                                      .pickFiles(allowedExtensions: ['zip']);
+                                  var result = await (FilePicker.platform.pickFiles(
+                                      allowedExtensions: ['zip']) as FutureOr<FilePickerResult>);
                                   uploadedFile(result.files.single);
                                 }),
-                            actions: uploadedFile.value.name == null
+                            actions: uploadedFile.value!.name == null
                                 ? []
                                 : [
                                     TextButton(
@@ -137,7 +139,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                                         child: Text('取消')),
                                     TextButton(
                                         onPressed: () async {
-                                          await controller.handleUpload(uploadedFile.value);
+                                          await controller.handleUpload(uploadedFile.value!);
                                           Get.back();
                                         },
                                         child: Text('上传')),
@@ -148,7 +150,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
             Obx(
               () => IconButton(
                 icon: Icon(Icons.save),
-                onPressed: (controller.processing.isTrue || controller.uncommitUpdateExist.isFalse)
+                onPressed: (controller.processing.isTrue! || controller.uncommitUpdateExist.isFalse)
                     ? null
                     : controller.saveChange,
                 disabledColor: Colors.grey,
@@ -158,7 +160,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
             Obx(
               () => IconButton(
                 icon: Icon(Icons.cancel),
-                onPressed: (controller.processing.isTrue || controller.uncommitUpdateExist.isFalse)
+                onPressed: (controller.processing.isTrue! || controller.uncommitUpdateExist.isFalse)
                     ? null
                     : controller.cancelChange,
                 disabledColor: Colors.grey,
@@ -170,7 +172,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
         drawer: const CSchoolWebAppDrawer(),
         body: ObxValue(
             (RxList<Rx<T>> docs) => HorizontalDataTable(
-                  leftHandSideColumnWidth: schema['id'],
+                  leftHandSideColumnWidth: schema['id']!,
                   rightHandSideColumnWidth: _rightSideWidth,
                   itemCount: docs.length + 1, // Add a Line for insert new row add bottom
                   isFixedHeader: true,
@@ -186,7 +188,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                     return EditableCell<T, N>(
                       index: index,
                       name: 'id',
-                      width: schema['id'],
+                      width: schema['id']!,
                       height: height,
                       validators:
                           validators.containsKey('id') ? validators['id'] : [Validators.required],
@@ -198,13 +200,13 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                   rightSideItemBuilder: (context, index) {
                     var addButton = Obx(() => IconButton(
                         icon: Icon(Icons.add),
-                        onPressed: controller.processing.isTrue
+                        onPressed: controller.processing.isTrue!
                             ? null
                             : () async => controller.addRow(index: index)));
                     var deleteButton = Obx(
                       () => IconButton(
                           icon: Icon(Icons.indeterminate_check_box_outlined),
-                          onPressed: controller.processing.isTrue
+                          onPressed: controller.processing.isTrue!
                               ? null
                               : () => controller.deleteRow(index)),
                     );

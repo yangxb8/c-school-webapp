@@ -1,9 +1,6 @@
 // Dart imports:
 import 'dart:convert';
 
-// Flutter imports:
-import 'package:flutter/foundation.dart';
-
 // Package imports:
 import 'package:blurhash_dart/blurhash_dart.dart';
 import 'package:blurhash_dart/src/exception.dart';
@@ -26,22 +23,22 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
   RxList<Rx<Lecture>> get docs => LectureService.allLecturesObx;
 
   @override
-  Lecture generateDocument([String id]) => Lecture(id: id ?? 'C0001');
+  Lecture generateDocument([String? id]) => Lecture(id: id ?? 'C0001');
 
   @override
-  Future<void> handleValueChange({@required Rx<Lecture> doc, @required String name}) async {
+  Future<void> handleValueChange({required Rx<Lecture> doc, required String name}) async {
     if (name == '图片') {
       doc.update((val) async {
-        final file = uploadedFile.value;
-        final path = '${doc.value.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
+        final file = uploadedFile.value!;
+        final path = '${doc.value!.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
         final storageRecord = StorageRecord(
-            path: path, data: file.bytes, filename: '${doc.value.lectureId}.${file.extension}');
+            path: path, data: file.bytes, filename: '${doc.value!.lectureId}.${file.extension}');
         registerCacheUpdateRecord(doc: doc, name: name, updateRecords: [storageRecord]);
         try {
           if (!tryLock()) return;
-          var image = img.decodeImage(file.bytes);
+          var image = img.decodeImage(file.bytes!)!;
           final picHash = BlurHash.encode(image, numCompX: 9, numCompY: 9).hash;
-          val.picHash = picHash;
+          val!.picHash = picHash;
         } on BlurHashEncodeException catch (e) {
           logger.e(e.message);
         } finally {
@@ -50,7 +47,7 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
       });
       return;
     }
-    final updated = form.value.controls[name].value;
+    final updated = form.value!.controls[name]!.value;
     // If id is changed, move the row
     if (name == 'id') {
       moveRow(doc, updated);
@@ -59,16 +56,16 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
     doc.update((val) {
       switch (name) {
         case '标题':
-          val.title = updated;
+          val!.title = updated;
           break;
         case '详细':
-          val.description = updated;
+          val!.description = updated;
           break;
         case '等级':
-          val.level = int.parse(updated);
+          val!.level = int.parse(updated);
           break;
         case 'tags':
-          val.tags.assignAll(updated.split('/'));
+          val!.tags!.assignAll(updated.split('/'));
           break;
         default:
           return;
@@ -85,7 +82,7 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
     await showPasswordRequireDialog(
         success: () async {
           final files = unArchive(uploadedFile);
-          final csvContent = utf8.decode(files.remove('csv'));
+          final csvContent = utf8.decode(files.remove('csv')!);
           await apiService.firestoreApi.uploadLecturesByCsv(content: csvContent, assets: files);
           await LectureService.refresh();
         },
@@ -93,9 +90,9 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
   }
 
   @override
-  void updateStorageFile({Rx<Lecture> doc, String name, List<StorageFile> storageFiles}) {
+  void updateStorageFile({Rx<Lecture>? doc, String? name, List<StorageFile>? storageFiles}) {
     if (name == 'pic') {
-      doc.update((val) => val.pic = storageFiles.single);
+      doc!.update((val) => val!.pic = storageFiles!.single);
     }
   }
 }

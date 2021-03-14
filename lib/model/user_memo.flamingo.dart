@@ -26,7 +26,7 @@ extension UserMemoKeyExtension on UserMemoKey {
       case UserMemoKey.timestamp:
         return 'timestamp';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

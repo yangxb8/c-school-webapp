@@ -6,16 +6,16 @@ import 'package:after_layout/after_layout.dart';
 
 /// Wrapper for stateful functionality to provide onInit calls in stateles widget
 class StatefulWrapper extends StatefulWidget {
-  final Function onInit;
-  final Function didUpdateWidget;
-  final Function deactivate;
-  final Function dispose;
-  final Function afterFirstLayout;
+  final Function? onInit;
+  final Function? didUpdateWidget;
+  final Function? deactivate;
+  final Function? dispose;
+  final Function? afterFirstLayout;
   final Widget child;
   const StatefulWrapper(
       {this.onInit,
       this.afterFirstLayout,
-      @required this.child,
+      required this.child,
       this.didUpdateWidget,
       this.deactivate,
       this.dispose});
@@ -27,7 +27,7 @@ class _StatefulWrapperState extends State<StatefulWrapper> with AfterLayoutMixin
   @override
   void initState() {
     if (widget.onInit != null) {
-      widget.onInit();
+      widget.onInit!();
     }
     super.initState();
   }
@@ -35,7 +35,7 @@ class _StatefulWrapperState extends State<StatefulWrapper> with AfterLayoutMixin
   @override
   void afterFirstLayout(BuildContext context) {
     if (widget.afterFirstLayout != null) {
-      widget.afterFirstLayout();
+      widget.afterFirstLayout!();
     }
   }
 
@@ -47,15 +47,15 @@ class _StatefulWrapperState extends State<StatefulWrapper> with AfterLayoutMixin
   @override
   void didUpdateWidget(Widget oldWidget) {
     if (widget.didUpdateWidget != null) {
-      widget.didUpdateWidget(oldWidget);
+      widget.didUpdateWidget!(oldWidget);
     }
-    super.didUpdateWidget(oldWidget);
+    super.didUpdateWidget(oldWidget as StatefulWrapper);
   }
 
   @override
   void deactivate() {
     if (widget.deactivate != null) {
-      widget.deactivate();
+      widget.deactivate!();
     }
     super.deactivate();
   }
@@ -63,7 +63,7 @@ class _StatefulWrapperState extends State<StatefulWrapper> with AfterLayoutMixin
   @override
   void dispose() {
     if (widget.dispose != null) {
-      widget.dispose();
+      widget.dispose!();
     }
     super.dispose();
   }

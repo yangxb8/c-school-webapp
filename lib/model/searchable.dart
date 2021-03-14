@@ -14,7 +14,7 @@ abstract class Searchable {
 
 extension SearchableUtil on Searchable {
   /// Detect if a Searchable contains key fuzzily
-  bool containsFuzzy(String key, {Iterable<String> searchPropertiesEnable, FuzzyOptions options}) {
+  bool containsFuzzy(String key, {Iterable<String>? searchPropertiesEnable, FuzzyOptions? options}) {
     options ??= defaultFuzzyOption;
     var match = false;
     searchPropertiesEnable ??= searchableProperties.keys;
@@ -36,7 +36,7 @@ extension SearchableUtil on Searchable {
 
 extension SearchableListUtil on Iterable<Searchable> {
   /// Fuzzy search a list of Searchable by keyword, options can be provided
-  List<T> searchFuzzy<T extends Searchable>(String key, {FuzzyOptions options}) {
-    return where((item) => item.containsFuzzy(key, options: options)).toList();
+  List<T> searchFuzzy<T extends Searchable>(String key, {FuzzyOptions? options}) {
+    return where((item) => item.containsFuzzy(key, options: options)).toList() as List<T>;
   }
 }

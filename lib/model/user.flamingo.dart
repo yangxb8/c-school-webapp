@@ -41,7 +41,7 @@ extension AppUserKeyExtension on AppUserKey {
       case AppUserKey.userMemos:
         return 'userMemos';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

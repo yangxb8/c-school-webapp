@@ -33,7 +33,7 @@ extension WordMeaningKeyExtension on WordMeaningKey {
       case WordMeaningKey.exampleFemaleAudios:
         return 'exampleFemaleAudios';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

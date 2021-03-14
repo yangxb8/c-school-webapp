@@ -23,7 +23,7 @@ extension LectureHistoryKeyExtension on LectureHistoryKey {
       case LectureHistoryKey.isLatest:
         return 'isLatest';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

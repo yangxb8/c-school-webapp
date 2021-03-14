@@ -18,94 +18,102 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
   static LectureService lectureService = Get.find<LectureService>();
 
   Word({
-    String id,
-    DocumentSnapshot snapshot,
-    Map<String, dynamic> values,
+    String? id,
+    DocumentSnapshot? snapshot,
+    Map<String, dynamic>? values,
   })  : wordId = id,
         tags = id == null ? [] : [id.split('-').first], // Assign lectureId to tags
         super(id: id, snapshot: snapshot, values: values);
 
   @Field()
-  String wordId;
+  String? wordId;
 
   /// Example: [['我'],[们]]
   @Field()
-  List<String> word = [];
+  List<String>? word = [];
 
   /// Example: [['wo'],['men']]
   @Field()
-  List<String> pinyin = [];
+  List<String>? pinyin = [];
 
   /// Usage and other information about this word
   @Field()
-  String explanation = '';
+  String? explanation = '';
 
   @Field()
-  String partOfSentence = '';
+  String? partOfSentence = '';
 
   @Field()
-  String hint = '';
+  String? hint = '';
 
   /// 日语意思
   @ModelField()
-  List<WordMeaning> wordMeanings = [];
+  List<WordMeaning>? wordMeanings = [];
 
   /// related word in examples
   @Field()
-  List<String> _relatedWordIds = [];
+  List<String>? _relatedWordIds = [];
 
   /// Same word but with different meanings
   @Field()
-  List<String> _otherMeaningIds = [];
+  List<String>? _otherMeaningIds = [];
 
   /// 拆字
   @Field()
-  List<String> breakdowns = [];
+  List<String>? breakdowns = [];
 
   /// Converted from WordTag enum
   @Field()
-  List<String> tags = [];
+  List<String>? tags = [];
 
   /// Hash of word pic for display by blurhash
   @Field()
-  String picHash = '';
+  String? picHash = '';
 
   /// If the word has pic in cloud storage
   @StorageField()
-  StorageFile pic;
+  StorageFile? pic;
 
   /// If the word has wordAudio in cloud storage
   @StorageField()
-  StorageFile wordAudioMale;
+  StorageFile? wordAudioMale;
 
   @StorageField()
-  StorageFile wordAudioFemale;
+  StorageFile? wordAudioFemale;
+
+  /// Start time of each hanzi in milliseconds
+  @Field()
+  List<int>? wordAudioMaleTimeSeries = [];
+
+  /// Start time of each hanzi in milliseconds
+  @Field()
+  List<int>? wordAudioFemaleTimeSeries = [];
 
   List<Word> get relatedWords {
-    if (_relatedWordIds.isBlank) {
+    if (_relatedWordIds.isBlank!) {
       return [];
     } else {
-      return lectureService.findWordsByIds(_relatedWordIds);
+      return lectureService.findWordsByIds(_relatedWordIds!);
     }
   }
 
-  set relatedWordIDs(List<String> relatedWordIDs) => _relatedWordIds = relatedWordIDs;
+  set relatedWordIDs(List<String>? relatedWordIDs) => _relatedWordIds = relatedWordIDs;
 
   List<Word> get otherMeanings {
-    if (_otherMeaningIds.isBlank) {
+    if (_otherMeaningIds.isBlank!) {
       return [];
     } else {
-      return lectureService.findWordsByIds(_otherMeaningIds);
+      return lectureService.findWordsByIds(_otherMeaningIds!);
     }
   }
 
-  set otherMeaningIds(List<String> otherMeaningIds) => _otherMeaningIds = otherMeaningIds;
+  set otherMeaningIds(List<String>? otherMeaningIds) => _otherMeaningIds = otherMeaningIds;
 
-  Lecture get lecture => lectureService.findLectureById(lectureId);
+  Lecture? get lecture => lectureService.findLectureById(lectureId);
 
   String get lectureId => id.split('-').first;
 
-  String get wordAsString => word.join();
+  String get wordAsString => word!.join();
 
   @override
   Map<String, dynamic> toData() => _$toData(this);
@@ -117,25 +125,25 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
   Map<String, dynamic> get searchableProperties => {
         'wordAsString': wordAsString,
         'pinyin': pinyin,
-        'wordMeanings': wordMeanings.map((m) => m.meaning),
+        'wordMeanings': wordMeanings!.map((m) => m.meaning),
         'tags': tags
       };
 
   @override
-  Word copyWith({String id}) => Word(id: id ?? this.id)
+  Word copyWith({String? id}) => Word(id: id ?? this.id)
     ..word = word?.copy
     ..pinyin = pinyin?.copy
-    ..otherMeaningIds = _otherMeaningIds.copy
-    ..relatedWordIDs = _relatedWordIds.copy
-    ..breakdowns = breakdowns.copy
-    ..hint = hint.substring(0)
-    ..explanation = explanation.substring(0)
-    ..partOfSentence = partOfSentence.substring(0)
+    ..otherMeaningIds = _otherMeaningIds!.copy
+    ..relatedWordIDs = _relatedWordIds!.copy
+    ..breakdowns = breakdowns!.copy
+    ..hint = hint!.substring(0)
+    ..explanation = explanation!.substring(0)
+    ..partOfSentence = partOfSentence!.substring(0)
     ..pic = pic?.copy()
     ..picHash = picHash?.substring(0)
     ..wordAudioFemale = wordAudioFemale?.copy()
     ..wordAudioMale = wordAudioMale?.copy()
-    ..wordMeanings = wordMeanings.map((m) => m.copyWith()).toList();
+    ..wordMeanings = wordMeanings!.map((m) => m.copyWith()).toList();
 
   @override
   String generateIdFromIndex(int index) => '$lectureId-${index.toString().padLeft(3, '0')}';
@@ -147,7 +155,7 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
   Map<String, dynamic> get properties => {
         'id': id,
         '单词': wordAsString,
-        '拼音': pinyin.join('-'),
+        '拼音': pinyin!.join('-'),
         '其他意思ID': _otherMeaningIds,
         '关联单词ID': _relatedWordIds,
         '提示': hint,
@@ -156,8 +164,8 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
         '图片': pic,
         '占位图片': picHash,
         '单词音频': [wordAudioMale, wordAudioFemale],
-        '日语意思': wordMeanings.map((e) => e.meaning).toList(),
-        '例句': wordMeanings.isEmpty? []:wordMeanings.single.examples,
+        '日语意思': wordMeanings!.map((e) => e.meaning).toList(),
+        '例句': wordMeanings!.isEmpty? []:wordMeanings!.single.examples,
         'tags': tags,
       };
 }

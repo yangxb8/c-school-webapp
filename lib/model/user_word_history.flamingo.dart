@@ -26,7 +26,7 @@ extension WordHistoryKeyExtension on WordHistoryKey {
       case WordHistoryKey.isLatest:
         return 'isLatest';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

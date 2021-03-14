@@ -36,7 +36,7 @@ extension LectureKeyExtension on LectureKey {
       case LectureKey.pic:
         return 'pic';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

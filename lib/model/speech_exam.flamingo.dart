@@ -24,7 +24,7 @@ extension SpeechExamKeyExtension on SpeechExamKey {
       case SpeechExamKey.refAudio:
         return 'refAudio';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }

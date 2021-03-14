@@ -1,4 +1,5 @@
 // Package imports:
+import 'package:cschool_webapp/exception.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 
@@ -14,9 +15,9 @@ class Exam<T> extends Document<Exam<T>> {
       _factories = {'SpeechExam': (snapshot) => SpeechExam(snapshot: snapshot)};
 
   Exam({
-    String id,
-    DocumentSnapshot snapshot,
-    Map<String, dynamic> values,
+    String? id,
+    DocumentSnapshot? snapshot,
+    Map<String, dynamic>? values,
   })  : examId = id,
         tags = id == null ? [] : [id.split('-').first],
         _examType = T.toString(), // Assign lectureId to tags
@@ -25,23 +26,23 @@ class Exam<T> extends Document<Exam<T>> {
   /// Create instance of subclass by snapshot
   factory Exam.fromSnapshot(DocumentSnapshot snapshot) {
     if (snapshot.exists) {
-      return _factories[snapshot.data()['_examType']](snapshot);
+      return _factories[snapshot.data()!['_examType']]!(snapshot) as Exam<T>;
     }
-    return null;
+    throw DocumentNotExistedError();
   }
 
   @Field()
-  String examId;
+  String? examId;
   @Field()
-  String title;
+  String? title;
   @Field()
-  String question;
+  String? question;
   @Field()
-  List<String> tags;
+  List<String>? tags;
   @Field()
   String _examType;
 
-  String get lectureId => examId.split('-').first;
+  String get lectureId => examId!.split('-').first;
 
   @override
   Map<String, dynamic> toData() => _$toData(this);

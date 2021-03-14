@@ -29,7 +29,7 @@ class CSchool {
   CSchool._();
 
   static const _kFontFam = 'CSchool';
-  static const String _kFontPkg = null;
+  static const String? _kFontPkg = null;
 
   static const IconData volume = IconData(0xe800, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData study = IconData(0xe801, fontFamily: _kFontFam, fontPackage: _kFontPkg);

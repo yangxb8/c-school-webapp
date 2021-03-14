@@ -18,10 +18,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.7.0 <3.0.0"
+  sdk: '>=2.12.0 <3.0.0'
 
 scripts:
-  build: pub run build_runner build --delete-conflicting-outputs
+  build: flutter pub run build_runner build --delete-conflicting-outputs
   build-web: flutter build web --profile --web-renderer html
   sort: flutter pub run import_sorter:main
 
@@ -37,6 +37,7 @@ dependencies:
   cloud_firestore: ^1.0.1
   firebase_storage: ^8.0.0
   get: ^4.0.0-nullsafety.2
+  uuid: ^3.0.1
   fuzzy: ^0.4.0-nullsafety.0
   after_layout: ^1.0.7+2
   supercharged: ^2.0.0

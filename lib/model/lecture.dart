@@ -18,39 +18,39 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
   static LectureService lectureService = Get.find<LectureService>();
 
   Lecture({
-    String id,
-    int level = 0,
-    DocumentSnapshot snapshot,
-    Map<String, dynamic> values,
+    String? id,
+    int? level = 0,
+    DocumentSnapshot? snapshot,
+    Map<String, dynamic>? values,
   })  : lectureId = id,
         level = level,
         tags = id == null ? [] : ['$levelPrefix$level'],
         super(id: id, snapshot: snapshot, values: values);
 
   @Field()
-  String lectureId;
+  String? lectureId;
 
   /// For display
   @Field()
-  int level = 0;
+  int? level = 0;
 
   @Field()
-  String title = '';
+  String? title = '';
 
   @Field()
-  String description = '';
+  String? description = '';
 
   /// Converted from ClassTag enum
   @Field()
-  List<String> tags = <String>[];
+  List<String>? tags = <String>[];
 
   /// Hash of lecture pic for display by blurhash
   @Field()
-  String picHash = '';
+  String? picHash = '';
 
   /// If the lecture has pic in cloud storage
   @StorageField()
-  StorageFile pic;
+  StorageFile? pic;
 
   /// find words related
   List<Word> get words => lectureService.findWordsByTags([lectureId]);
@@ -61,7 +61,7 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
   String get levelForDisplay => '$levelPrefix$level';
 
   /// 'C0001' => 1
-  int get intLectureId => int.parse(lectureId.numericOnly());
+  int get intLectureId => int.parse(lectureId!.numericOnly());
 
   @override
   Map<String, dynamic> toData() => _$toData(this);
@@ -90,15 +90,15 @@ class Lecture extends Document<Lecture> with UpdatableDocument<Lecture> implemen
       };
 
   @override
-  Lecture copyWith({String id, int level, String title, String description, List<String> tags}) {
+  Lecture copyWith({String? id, int? level, String? title, String? description, List<String>? tags}) {
     final tagsCopy = <String>[];
-    this.tags.forEach((t) => tagsCopy.add('$t'));
+    this.tags!.forEach((t) => tagsCopy.add('$t'));
     return Lecture(id: id ?? this.id, level: level ?? this.level)
       ..title = title ?? this.title
       ..description = description ?? this.description
       ..tags = tags ?? tagsCopy
       ..pic = pic?.copy() // If not image or new row, this will be null
-      ..picHash = picHash.substring(0); // Copy
+      ..picHash = picHash!.substring(0); // Copy
   }
 
   @override

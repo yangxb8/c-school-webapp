@@ -48,8 +48,8 @@ class AppRouter {
 
 class SplashMiddleware extends GetMiddleware {
   @override
-  RouteSettings redirect(String route) {
-    if (AppStateService.isInitialized.isTrue) {
+  RouteSettings? redirect(String? route) {
+    if (AppStateService.isInitialized.isTrue!) {
       return null;
     } else {
       return RouteSettings(name: '/splash', arguments: route);

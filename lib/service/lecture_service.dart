@@ -7,14 +7,13 @@ import '../model/exam_base.dart';
 import '../model/lecture.dart';
 import '../model/word.dart';
 import 'api_service.dart';
-import 'user_service.dart';
 
 /*
 * This class provide service related to Class, like fetching class,
 * words, etc.
 */
 class LectureService extends GetxService {
-  static LectureService _instance;
+  static LectureService? _instance;
   static final ApiService _apiService = Get.find();
 
   /// All classes available
@@ -26,7 +25,7 @@ class LectureService extends GetxService {
   /// All exams available
   static final allExamsObx = <Rx<Exam>>[].obs;
 
-  static Future<LectureService> getInstance() async {
+  static Future<LectureService?> getInstance() async {
     if (_instance == null) {
       _instance = LectureService();
       await refresh();
@@ -54,91 +53,70 @@ class LectureService extends GetxService {
         .obs);
   }
 
-  List<Word> findWordsByConditions(
-      {WordMemoryStatus wordMemoryStatus, String lectureId}) {
-    if (wordMemoryStatus == null && lectureId == null) {
-      return [];
-    }
-    var latestReviewHistory = UserService.user.reviewedWordHistory
-        .filter((record) => record.isLatest);
-    var filteredHistory = latestReviewHistory.filter((record) {
-      if (wordMemoryStatus != null &&
-          wordMemoryStatus != record.wordMemoryStatus) {
-        return false;
-      }
-      if (lectureId != null && lectureId != record.lectureId) {
-        return false;
-      }
-      return true;
-    });
-    var wordIdsOfMemoryStatus = filteredHistory.map((e) => e.wordId);
-    return findWordsByIds(wordIdsOfMemoryStatus.toList());
-  }
-
   List<Word> findWordsByIds(List<String> ids) {
-    if (ids.isBlank) {
+    if (ids.isBlank!) {
       return [];
     } else {
       return allWordsObx
-          .filter((word) => ids.contains(word.value.wordId))
+          .filter((word) => ids.contains(word.value!.wordId))
           .map((e) => e.value)
-          .toList();
+          .toList() as List<Word>;
     }
   }
 
-  List<Word> findWordsByTags(List<String> tags) {
-    if (tags.isBlank) {
+  List<Word> findWordsByTags(List<String?> tags) {
+    if (tags.isBlank!) {
       return [];
     } else {
       return allWordsObx
-          .filter((word) => tags.every((tag) => word.value.tags.contains(tag)))
+          .filter((word) => tags.every((tag) => word.value!.tags!.contains(tag)))
           .map((e) => e.value)
-          .toList();
+          .toList() as List<Word>;
     }
   }
 
-  List<Exam> findExamsByTags(List<String> tags) {
-    if (tags.isBlank) {
+  List<Exam> findExamsByTags(List<String?> tags) {
+    if (tags.isBlank!) {
       return [];
     } else {
       return allExamsObx
-          .filter((exam) => tags.every((tag) => exam.value.tags.contains(tag)))
+          .filter((exam) => tags.every((tag) => exam.value!.tags!.contains(tag)))
           .map((e) => e.value)
-          .toList();
+          .toList() as List<Exam<dynamic>>;
     }
   }
 
-  Exam findExamById(String id) {
-    if (id.isBlank) {
+  Exam? findExamById(String id) {
+    if (id.isBlank!) {
       return null;
     } else {
       return allExamsObx
-          .filter((exam) => id == exam.value.examId)
+          .filter((exam) => id == exam.value!.examId)
           .map((e) => e.value)
           .single;
     }
   }
 
-  Lecture findLectureById(String id) {
-    if (id.isBlank) {
+  Lecture? findLectureById(String id) {
+    if (id.isBlank!) {
       return null;
     } else {
       return allLecturesObx
-          .filter((lecture) => id == lecture.value.lectureId)
+          .filter((lecture) => id == lecture.value!.lectureId)
           .map((e) => e.value)
           .single;
     }
   }
 
   List<Lecture> findLecturesByTags(List<String> tags) {
-    if (tags.isBlank) {
+    if (tags.isBlank!) {
       return [];
     } else {
       return allLecturesObx
           .filter((lecture) =>
-              tags.every((tag) => lecture.value.tags.contains(tag)))
+              tags.every((tag) => lecture.value!.tags!.contains(tag)))
           .map((e) => e.value)
-          .toList();
+          .toList() as List<Lecture>;
     }
   }
 }

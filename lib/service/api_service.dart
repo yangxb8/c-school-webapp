@@ -1,20 +1,23 @@
 // Dart imports:
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 // Flutter imports:
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:cschool_webapp/model/soe_request.dart';
+import 'package:cschool_webapp/model/tts_request.dart';
+import 'package:cschool_webapp/service/tc3_service.dart';
+import 'package:collection/collection.dart';
 
 // Package imports:
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:collection/collection.dart';
 import 'package:csv/csv.dart';
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:get/get.dart';
+import 'package:uuid/uuid.dart';
 
 // Project imports:
 import '../model/exam_base.dart';
@@ -30,10 +33,10 @@ import './logger_service.dart';
 final logger = LoggerService.logger;
 
 class ApiService extends GetxService {
-  static ApiService _instance;
+  static ApiService? _instance;
   static bool _isFirebaseInitialized = false;
-  static _FirebaseAuthApi _firebaseAuthApi;
-  static _FirestoreApi _firestoreApi;
+  static late final _FirebaseAuthApi _firebaseAuthApi;
+  static late final _FirestoreApi _firestoreApi;
 
   static Future<ApiService> getInstance() async {
     _instance ??= ApiService();
@@ -41,12 +44,12 @@ class ApiService extends GetxService {
     if (!_isFirebaseInitialized) {
       await Firebase.initializeApp();
       await Flamingo.initializeApp();
-      _firebaseAuthApi = _FirebaseAuthApi.getInstance();
-      _firestoreApi = _FirestoreApi.getInstance();
+      _firebaseAuthApi = await _FirebaseAuthApi.getInstance();
+      _firestoreApi = await _FirestoreApi.getInstance();
       _isFirebaseInitialized = true;
     }
 
-    return _instance;
+    return _instance!;
   }
 
   _FirebaseAuthApi get firebaseAuthApi => _firebaseAuthApi;
@@ -54,11 +57,11 @@ class ApiService extends GetxService {
 }
 
 class _FirebaseAuthApi {
-  static _FirebaseAuthApi _instance;
+  static _FirebaseAuthApi? _instance;
   static bool _isFirebaseAuthInitialized = false;
-  static FirebaseAuth _firebaseAuth;
+  static late final FirebaseAuth _firebaseAuth;
 
-  static _FirebaseAuthApi getInstance() {
+  static Future<_FirebaseAuthApi> getInstance() async {
     _instance ??= _FirebaseAuthApi();
 
     if (!_isFirebaseAuthInitialized) {
@@ -66,13 +69,46 @@ class _FirebaseAuthApi {
       _isFirebaseAuthInitialized = true;
     }
 
-    return _instance;
+    return _instance!;
   }
 
-  User get currentUser => _firebaseAuth.currentUser;
+  Future<User?> getCurrentUser() async => await _firebaseAuth.authStateChanges().first;
 
   void listenToFirebaseAuth(Function func) {
     _firebaseAuth.authStateChanges().listen((_) async => await func());
+  }
+
+  // Already return fromm every conditions
+  // ignore: missing_return
+  Future<String> signUpWithEmail(String email, String password, String nickname) async {
+    try {
+      var userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      // Email verify by showing popup on provided context
+      Get.find<ApiService>()
+          .firestoreApi
+          ._registerAppUser(firebaseUser: userCredential.user!, nickname: nickname);
+      if (!userCredential.user!.emailVerified) {
+        await sendVerifyEmail();
+        return 'need email verify';
+      }
+      logger.d(email, 'User registered:');
+      return 'ok';
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        return 'login.register.error.registeredEmail'.tr;
+      }
+    } catch (e) {
+      logger.e(e);
+      return 'error.unknown.content'.tr;
+    } finally {
+      return 'error.unknown.content'.tr;
+    }
+  }
+
+  Future<void> sendVerifyEmail() async {
+    await (await getCurrentUser())!.reload();
+    await (await getCurrentUser())!.sendEmailVerification();
   }
 
   // Already return fromm every conditions
@@ -81,44 +117,59 @@ class _FirebaseAuthApi {
     try {
       var userCredential =
           await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-      if (!userCredential.user.emailVerified) {
-        return 'Please verify your email.';
+      if (!userCredential.user!.emailVerified) {
+        return 'login.login.error.unverifiedEmail'.tr;
       }
       return 'ok';
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
-        return 'No user found for that email.';
+        return 'login.login.error.unregisteredEmail'.tr;
       } else if (e.code == 'wrong-password') {
-        return 'Wrong password provided for that user.';
+        return 'login.login.error.wrongPassword'.tr;
+      } else {
+        return 'error.unknown.content'.tr;
       }
     } catch (e) {
       logger.e(e.toString());
-      return 'Unexpected internal error occurs';
+      return 'error.unknown.content'.tr;
     }
+  }
+
+  Future<String> logout() async {
+    await FirebaseAuth.instance.signOut();
+    //TODO: Login out from 3rd party OAuth
+    return 'ok';
   }
 }
 
 class _FirestoreApi {
   static const extension_audio = 'mp3';
   static const extension_image = ['jpg', 'jpeg', 'png'];
-  static _FirestoreApi _instance;
-  static FirebaseFirestore _firestore;
-  static DocumentAccessor _documentAccessor;
-  static User _currentUser;
+  static _FirestoreApi? _instance;
+  static late final FirebaseFirestore _firestore;
+  static late final DocumentAccessor _documentAccessor;
+  static User? _currentUser;
 
-  static _FirestoreApi getInstance() {
+  static Future<_FirestoreApi> getInstance() async {
     if (_instance == null) {
       _instance = _FirestoreApi();
-      _documentAccessor = DocumentAccessor();
       _firestore = FirebaseFirestore.instance;
+      _documentAccessor = DocumentAccessor();
       // _setupEmulator(); //TODO: Uncomment this to use firestore simulator
-      _currentUser = _FirebaseAuthApi().currentUser;
+      _currentUser = await _FirebaseAuthApi().getCurrentUser();
     }
 
-    return _instance;
+    return _instance!;
   }
 
-  Future<AppUser> fetchAppUser({User firebaseUser}) async {
+  void _registerAppUser({required User firebaseUser, required String nickname}) {
+    if (firebaseUser.isAnonymous) return;
+    var appUser = AppUser(id: firebaseUser.uid);
+    appUser.nickName = nickname;
+    _documentAccessor.save(appUser).catchError((e) => logger.e(e.printError()));
+  }
+
+  Future<AppUser?> fetchAppUser({User? firebaseUser}) async {
     firebaseUser ??= _currentUser;
     if (firebaseUser == null) {
       logger.e('fetchAppUser was called on null firebaseUser');
@@ -146,11 +197,11 @@ class _FirestoreApi {
 
   /// Upload a single file and return the reference
   Future<StorageFile> uploadFile(
-      {@required String path,
-      @required Uint8List data,
-      @required String filename,
-      @required String mimeType,
-      @required final Map<String, String> metadata}) async {
+      {required String path,
+      required Uint8List data,
+      required String filename,
+      required String mimeType,
+      required final Map<String, String> metadata}) async {
     final _storage = Storage()..fetch();
     final storageFile = await _storage.saveFromBytes(path, data,
         filename: filename, mimeType: mimeType, metadata: metadata);
@@ -158,18 +209,19 @@ class _FirestoreApi {
     return storageFile;
   }
 
-  Future<StorageFile> uploadFileRecord({@required StorageRecord record}) async {
+  Future<StorageFile> uploadFileRecord({required StorageRecord record}) async {
     return await uploadFile(
         path: record.path,
-        data: record.data,
+        data: record.data!,
         filename: record.filename,
-        mimeType: record.mimeType,
+        mimeType: record.mimeType!,
         metadata: record.metadata);
   }
 
   /// Upload words to firestore and cloud storage
-  void uploadWordsByCsv({@required String content, @required Map<String, Uint8List> assets}) async {
+  void uploadWordsByCsv({required String content, required Map<String, Uint8List?> assets}) async {
     final _storage = Storage()..fetch();
+    final tc = TcService();
     final _batch = Batch();
     final COLUMN_WORD_ID = 0;
     final COLUMN_WORD = COLUMN_WORD_ID + 1;
@@ -222,7 +274,7 @@ class _FirestoreApi {
       if (picExtension != null) {
         final filename = '${word.id}.$picExtension';
         final mimeType = picExtension == 'png' ? mimeTypePng : mimeTypeJpeg;
-        final wordPic = assets[filename];
+        final wordPic = assets[filename]!;
         word.pic = await _storage.saveFromBytes(pathWordPic, wordPic,
             filename: filename, mimeType: mimeType, metadata: {'newPost': 'true'});
       }
@@ -232,8 +284,8 @@ class _FirestoreApi {
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioMale)}';
       final pathWordAudioFemale =
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioFemale)}';
-      final wordAudioFileMale = assets['upload/${word.wordId}-W-M.$extension_audio'];
-      final wordAudioFileFemale = assets['upload/${word.wordId}-W-F.$extension_audio'];
+      final wordAudioFileMale = assets['upload/${word.wordId}-W-M.$extension_audio']!;
+      final wordAudioFileFemale = assets['upload/${word.wordId}-W-F.$extension_audio']!;
       word.wordAudioMale = await _storage.saveFromBytes(pathWordAudioMale, wordAudioFileMale,
           filename: '${word.wordId}-W-M.$extension_audio',
           mimeType: mimeTypeMpeg,
@@ -242,22 +294,38 @@ class _FirestoreApi {
           filename: '${word.wordId}-W-F.$extension_audio',
           mimeType: mimeTypeMpeg,
           metadata: {'newPost': 'true'});
+      // Generate time series for word
+      final wordAudioMaleEvaluation = await tc.sendSoeRequest(SoeRequest(
+          UserVoiceData: base64Encode(wordAudioFileMale),
+          SessionId: Uuid().v1(),
+          RefText: word.wordAsString,
+          ScoreCoeff: 4.0));
+      word.wordAudioMaleTimeSeries =
+          wordAudioMaleEvaluation.words!.map((w) => w.beginTime!).toList();
+      final wordAudioFemaleEvaluation = await tc.sendSoeRequest(SoeRequest(
+          UserVoiceData: base64Encode(wordAudioFileFemale),
+          SessionId: Uuid().v1(),
+          RefText: word.wordAsString,
+          ScoreCoeff: 4.0));
+      word.wordAudioFemaleTimeSeries =
+          wordAudioFemaleEvaluation.words!.map((w) => w.beginTime!).toList();
 
       // Examples Audio
       // Each meaning
-      await Future.forEach(word.wordMeanings, (meaning) async {
+      await Future.forEach(word.wordMeanings!, (WordMeaning meaning) async {
         var maleAudios = <StorageFile>[];
         var femaleAudios = <StorageFile>[];
+        var maleAudiosTimeSeries = <List<int>>[];
+        var femaleAudiosTimeSeries = <List<int>>[];
         // Each example
-        await Future.forEach(List.generate(meaning.exampleCount, (i) => i), (index) async {
+        await Future.forEach(List.generate(meaning.exampleCount, (i) => i), (dynamic index) async {
           final pathExampleMaleAudio =
               '${word.documentPath}/${EnumToString.convertToString(WordMeaningKey.exampleMaleAudios)}';
           final pathExampleFemaleAudio =
               '${word.documentPath}/${EnumToString.convertToString(WordMeaningKey.exampleFemaleAudios)}';
-          final exampleAudioFileMale =
-              assets['upload/${word.wordId}-E$index-M.$extension_audio'];
+          final exampleAudioFileMale = assets['upload/${word.wordId}-E$index-M.$extension_audio']!;
           final exampleAudioFileFemale =
-              assets['upload/${word.wordId}-E$index-F.$extension_audio'];
+              assets['upload/${word.wordId}-E$index-F.$extension_audio']!;
           final maleAudio = await _storage.saveFromBytes(pathExampleMaleAudio, exampleAudioFileMale,
               filename: '${word.wordId}-E$index-M.$extension_audio',
               mimeType: mimeTypeMpeg,
@@ -269,9 +337,27 @@ class _FirestoreApi {
               mimeType: mimeTypeMpeg,
               metadata: {'newPost': 'true'});
           femaleAudios.add(femaleAudio);
+          // Generate time series for example
+          final exampleAudioFileMaleEvaluation = await tc.sendSoeRequest(SoeRequest(
+              UserVoiceData: base64Encode(exampleAudioFileMale),
+              SessionId: Uuid().v1(),
+              RefText: meaning.examples[index].example,
+              ScoreCoeff: 4.0));
+          maleAudiosTimeSeries
+              .add(exampleAudioFileMaleEvaluation.words!.map((w) => w.beginTime!).toList());
+
+          final exampleAudioFileFemaleEvaluation = await tc.sendSoeRequest(SoeRequest(
+              UserVoiceData: base64Encode(exampleAudioFileFemale),
+              SessionId: Uuid().v1(),
+              RefText: meaning.examples[index].example,
+              ScoreCoeff: 4.0));
+          femaleAudiosTimeSeries
+              .add(exampleAudioFileFemaleEvaluation.words!.map((w) => w.beginTime!).toList());
         });
         meaning.exampleMaleAudios = maleAudios;
         meaning.exampleFemaleAudios = femaleAudios;
+        meaning.exampleMaleAudioTimeSeries = maleAudiosTimeSeries;
+        meaning.exampleFemaleAudioTimeSeries = femaleAudiosTimeSeries;
       });
 
       // Finally, save the word
@@ -284,7 +370,7 @@ class _FirestoreApi {
   }
 
   Future<void> uploadLecturesByCsv(
-      {@required String content, @required Map<String, Uint8List> assets}) async {
+      {required String content, required Map<String, Uint8List?> assets}) async {
     final _storage = Storage()..fetch();
     final _batch = Batch();
     final columnId = 0;
@@ -302,7 +388,7 @@ class _FirestoreApi {
       ..picHash = row[columnPicHash]?.trim());
 
     // Upload file to cloud storage and save reference
-    await Future.forEach(lectures, (lecture) async {
+    await Future.forEach(lectures, (dynamic lecture) async {
       // Word image
       final pathClassPic =
           '${lecture.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
@@ -313,7 +399,7 @@ class _FirestoreApi {
       }
       final mimeType = extension == 'png' ? mimeTypePng : mimeTypeJpeg;
       final filename = '${lecture.lectureId}.$extension';
-      final lecturePic = assets[filename];
+      final lecturePic = assets[filename]!;
       lecture.pic = await _storage.saveFromBytes(pathClassPic, lecturePic,
           filename: filename, mimeType: mimeType, metadata: {'newPost': 'true'});
 
@@ -326,27 +412,18 @@ class _FirestoreApi {
     _storage.dispose();
   }
 
-  void uploadSpeechExamsByCsv() async {
+  void uploadSpeechExamsByCsv(
+      {required String content, required Map<String, Uint8List?> assets}) async {
     final _storage = Storage()..fetch();
+    final tc = TcService();
     final _batch = Batch();
     final column_id = 0;
-    final column_title = 2;
-    final column_question = 3;
-    final column_ref_text = 4;
-    final column_process_statue = 5;
-    final process_status_new = 0;
+    final column_title = 1;
+    final column_question = 2;
+    final column_ref_text = 3;
 
     // Build Word from csv
-    var csv;
-    try {
-      csv = CsvToListConverter()
-          .convert(await rootBundle.loadString('assets/upload/speechExams.csv'))
-            ..removeWhere(
-                (w) => process_status_new != w[column_process_statue] || w[column_title] == null);
-    } catch (_) {
-      print('No speechExams.csv found, will skip!');
-      return;
-    }
+    var csv = CsvToListConverter().convert(content)..removeWhere((w) => w[column_title] == null);
 
     var exams = csv.map((row) => SpeechExam(id: row[column_id])
       ..title = row[column_title].trim() // Title should not be null
@@ -358,20 +435,22 @@ class _FirestoreApi {
       print('total: ${data.totalBytes} transferred: ${data.bytesTransferred}');
     });
     // Upload file to cloud storage and save reference
-    await exams.forEach((exam) async {
-      // Word image
+    exams.forEach((exam) async {
       final pathRefAudio =
           '${exam.documentPath}/${EnumToString.convertToString(SpeechExamKey.refAudio)}';
-      try {
-        final refAudio = null;
-        exam.pic = await _storage.saveFromBytes(pathRefAudio, refAudio,
-            filename: '${exam.id}.$extension_audio',
-            mimeType: mimeTypeMpeg,
-            metadata: {'newPost': 'true'});
-      } catch (e, _) {
-        logger.i('Not image found for ${exam.title}, will skip');
-      }
-
+      final wordAudioFile =
+          await tc.sendTtsRequest(TtsRequest(SessionId: Uuid().v1(), Text: exam.refText!));
+      exam.refAudio = await _storage.saveFromBytes(pathRefAudio, wordAudioFile,
+          filename: '${exam.id}.$extension_audio',
+          mimeType: mimeTypeMpeg,
+          metadata: {'newPost': 'true'});
+      // Generate time series for word
+      final refAudioEvaluation = await tc.sendSoeRequest(SoeRequest(
+          UserVoiceData: base64Encode(wordAudioFile),
+          SessionId: Uuid().v1(),
+          RefText: exam.refText,
+          ScoreCoeff: 4.0));
+      exam.refAudioTimeSeries = refAudioEvaluation.words!.map((w) => w.beginTime!).toList();
       // Finally, save the word
       _batch.save(exam);
     });
@@ -381,7 +460,7 @@ class _FirestoreApi {
     _storage.dispose();
   }
 
-  Future<List<Word>> fetchWords({List<String> tags}) async {
+  Future<List<Word>> fetchWords({List<String>? tags}) async {
     final collectionPaging = CollectionPaging<Word>(
       query: Word().collectionRef.orderBy('wordId'),
       limit: 10000,
@@ -391,7 +470,7 @@ class _FirestoreApi {
   }
 
   /// Fetch all entities extends exam
-  Future<List<Exam>> fetchExams({List<String> tags}) async {
+  Future<List<Exam>> fetchExams({List<String>? tags}) async {
     final collectionPaging = CollectionPaging<Exam>(
       query: Exam().collectionRef.orderBy('examId'),
       limit: 10000,
@@ -400,7 +479,7 @@ class _FirestoreApi {
     return await collectionPaging.load();
   }
 
-  Future<List<Lecture>> fetchLectures({List<String> tags}) async {
+  Future<List<Lecture>> fetchLectures({List<String>? tags}) async {
     final collectionPaging = CollectionPaging<Lecture>(
       query: Lecture().collectionRef.orderBy('lectureId'),
       limit: 10000,
@@ -415,7 +494,7 @@ class _FirestoreApi {
     for (final batch in batchMap.entries) {
       final action = batch.value;
       final doc = batch.key.value;
-      _batch.actions[action](doc);
+      _batch.actions[action]!(doc);
     }
     await _batch.commit();
     _storage.dispose();

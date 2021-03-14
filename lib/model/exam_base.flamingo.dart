@@ -29,7 +29,7 @@ extension ExamKeyExtension on ExamKey {
       case ExamKey._examType:
         return '_examType';
       default:
-        return null;
+        throw Exception('Invalid data key.');
     }
   }
 }
