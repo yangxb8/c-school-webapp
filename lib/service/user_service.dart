@@ -18,7 +18,7 @@ class UserService extends GetxService {
   static Future<UserService> getInstance() async {
     if (_instance == null) {
       _instance = UserService();
-      await _refreshAppUser();
+      _refreshAppUser();
       _listenToFirebaseAuth();
     }
     return _instance;

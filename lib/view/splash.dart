@@ -9,7 +9,6 @@ import 'package:styled_widget/styled_widget.dart';
 // Project imports:
 import 'package:cschool_webapp/service/api_service.dart';
 import 'package:cschool_webapp/service/app_state_service.dart';
-import 'package:cschool_webapp/service/audio_service.dart';
 import 'package:cschool_webapp/service/user_service.dart';
 import '../util/utility.dart';
 
@@ -35,7 +34,6 @@ Future<void> initServices() async {
   await Get.putAsync<ApiService>(() async => await ApiService.getInstance());
   await Get.find<ApiService>().firebaseAuthApi.loginWithEmail('yangxb10@gmail.com', '199141');
   await Get.putAsync<UserService>(() async => await UserService.getInstance());
-  Get.lazyPut<AudioService>(() => AudioService());
   Logger.level = AppStateService.isDebug ? Level.debug : Level.error;
   if (UserService.isLectureServiceInitialized.isTrue) {
     AppStateService.isInitialized.value = true;

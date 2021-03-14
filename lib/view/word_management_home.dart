@@ -1,7 +1,12 @@
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Package imports:
+import 'package:get/get.dart';
+
+// Project imports:
 import 'package:cschool_webapp/service/lecture_service.dart';
 import 'package:cschool_webapp/view/ui_view/webapp_drawer.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 class WordManagementHome extends StatelessWidget {
   @override

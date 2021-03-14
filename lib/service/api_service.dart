@@ -8,13 +8,13 @@ import 'package:flutter/services.dart';
 
 // Package imports:
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 import 'package:csv/csv.dart';
 import 'package:enum_to_string/enum_to_string.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:get/get.dart';
-import 'package:supercharged/supercharged.dart';
 
 // Project imports:
 import '../model/exam_base.dart';
@@ -214,11 +214,11 @@ class _FirestoreApi {
         .toList();
 
     // Upload file to cloud storage and save reference
-    await words.forEach((word) async {
+    words.forEach((word) async {
       // Word image
       final pathWordPic = '${word.documentPath}/${EnumToString.convertToString(WordKey.pic)}';
       final picExtension =
-          extension_image.where((e) => assets.containsKey('${word.id}.$e')).firstOrNull();
+          extension_image.where((e) => assets.containsKey('${word.id}.$e')).firstOrNull;
       if (picExtension != null) {
         final filename = '${word.id}.$picExtension';
         final mimeType = picExtension == 'png' ? mimeTypePng : mimeTypeJpeg;
@@ -232,14 +232,14 @@ class _FirestoreApi {
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioMale)}';
       final pathWordAudioFemale =
           '${word.documentPath}/${EnumToString.convertToString(WordKey.wordAudioFemale)}';
-      final wordAudioFileMale = assets['upload/${word.wordId}-W-M.${extension_audio}'];
-      final wordAudioFileFemale = assets['upload/${word.wordId}-W-F.${extension_audio}'];
+      final wordAudioFileMale = assets['upload/${word.wordId}-W-M.$extension_audio'];
+      final wordAudioFileFemale = assets['upload/${word.wordId}-W-F.$extension_audio'];
       word.wordAudioMale = await _storage.saveFromBytes(pathWordAudioMale, wordAudioFileMale,
-          filename: '${word.wordId}-W-M.${extension_audio}',
+          filename: '${word.wordId}-W-M.$extension_audio',
           mimeType: mimeTypeMpeg,
           metadata: {'newPost': 'true'});
       word.wordAudioFemale = await _storage.saveFromBytes(pathWordAudioFemale, wordAudioFileFemale,
-          filename: '${word.wordId}-W-F.${extension_audio}',
+          filename: '${word.wordId}-W-F.$extension_audio',
           mimeType: mimeTypeMpeg,
           metadata: {'newPost': 'true'});
 
@@ -255,17 +255,17 @@ class _FirestoreApi {
           final pathExampleFemaleAudio =
               '${word.documentPath}/${EnumToString.convertToString(WordMeaningKey.exampleFemaleAudios)}';
           final exampleAudioFileMale =
-              assets['upload/${word.wordId}-E${index}-M.${extension_audio}'];
+              assets['upload/${word.wordId}-E$index-M.$extension_audio'];
           final exampleAudioFileFemale =
-              assets['upload/${word.wordId}-E${index}-F.${extension_audio}'];
+              assets['upload/${word.wordId}-E$index-F.$extension_audio'];
           final maleAudio = await _storage.saveFromBytes(pathExampleMaleAudio, exampleAudioFileMale,
-              filename: '${word.wordId}-E${index}-M.${extension_audio}',
+              filename: '${word.wordId}-E$index-M.$extension_audio',
               mimeType: mimeTypeMpeg,
               metadata: {'newPost': 'true'});
           maleAudios.add(maleAudio);
           final femaleAudio = await _storage.saveFromBytes(
               pathExampleFemaleAudio, exampleAudioFileFemale,
-              filename: '${word.wordId}-E${index}-F.${extension_audio}',
+              filename: '${word.wordId}-E$index-F.$extension_audio',
               mimeType: mimeTypeMpeg,
               metadata: {'newPost': 'true'});
           femaleAudios.add(femaleAudio);
@@ -307,7 +307,7 @@ class _FirestoreApi {
       final pathClassPic =
           '${lecture.documentPath}/${EnumToString.convertToString(LectureKey.pic)}';
       final extension =
-          extension_image.where((e) => assets.containsKey('${lecture.lectureId}.$e')).firstOrNull();
+          extension_image.where((e) => assets.containsKey('${lecture.lectureId}.$e')).firstOrNull;
       if (extension == null) {
         return;
       }
@@ -363,9 +363,9 @@ class _FirestoreApi {
       final pathRefAudio =
           '${exam.documentPath}/${EnumToString.convertToString(SpeechExamKey.refAudio)}';
       try {
-        final refAudio = await createFileFromAssets('upload/${exam.id}.${extension_audio}');
-        exam.pic = await _storage.save(pathRefAudio, refAudio,
-            filename: '${exam.id}.${extension_audio}',
+        final refAudio = null;
+        exam.pic = await _storage.saveFromBytes(pathRefAudio, refAudio,
+            filename: '${exam.id}.$extension_audio',
             mimeType: mimeTypeMpeg,
             metadata: {'newPost': 'true'});
       } catch (e, _) {

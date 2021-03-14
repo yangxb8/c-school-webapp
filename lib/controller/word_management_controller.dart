@@ -1,18 +1,21 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:blurhash_dart/blurhash_dart.dart';
 import 'package:blurhash_dart/src/exception.dart';
-import 'package:cschool_webapp/service/lecture_service.dart';
-import 'package:cschool_webapp/view/ui_view/password_require.dart';
 import 'package:enum_to_string/enum_to_string.dart';
-import 'package:image/image.dart' as img;
-import 'package:supercharged/supercharged.dart';
-import 'package:cschool_webapp/model/updatable.dart';
-import 'package:cschool_webapp/model/word.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flamingo/src/model/storage_file.dart';
 import 'package:get/get.dart';
 import 'package:get/get_rx/src/rx_types/rx_types.dart';
+import 'package:image/image.dart' as img;
+
+// Project imports:
+import 'package:cschool_webapp/model/updatable.dart';
+import 'package:cschool_webapp/model/word.dart';
+import 'package:cschool_webapp/service/lecture_service.dart';
+import 'package:cschool_webapp/view/ui_view/password_require.dart';
 
 class WordManagementController extends DocumentUpdateController<Word> {
   String lectureId;
@@ -34,24 +37,24 @@ class WordManagementController extends DocumentUpdateController<Word> {
   Word generateDocument([String id]) => Word(id: id ?? '$lectureId-001');
 
   @override
-  Future<void> handleUpload(PlatformFile uploadedFile) async{
+  Future<void> handleUpload(PlatformFile uploadedFile) async {
     if (!tryLock()) {
       return;
     }
     await showPasswordRequireDialog(
         success: () async {
-      final files = unArchive(uploadedFile);
-      final csvContent = utf8.decode(files.remove('csv'));
-      await apiService.firestoreApi.uploadWordsByCsv(content: csvContent, assets: files);
-      await LectureService.refresh();
-    },
-    last: () => unlock());
+          final files = unArchive(uploadedFile);
+          final csvContent = utf8.decode(files.remove('csv'));
+          apiService.firestoreApi.uploadWordsByCsv(content: csvContent, assets: files);
+          await LectureService.refresh();
+        },
+        last: () => unlock());
   }
 
   @override
   Future<void> handleValueChange({Rx<Word> doc, String name}) async {
     if (name == '图片') {
-      await doc.update((val) async {
+      doc.update((val) async {
         final file = uploadedFile.value;
         final path = '${doc.value.documentPath}/${EnumToString.convertToString(WordKey.pic)}';
         final storageRecord = StorageRecord(
@@ -60,8 +63,7 @@ class WordManagementController extends DocumentUpdateController<Word> {
         try {
           if (!tryLock()) return;
           var image = img.decodeImage(file.bytes);
-          final picHash = encodeBlurHash(image.getBytes(), image.width, image.height,
-              numCompX: 9, numpCompY: 9);
+          final picHash = BlurHash.encode(image, numCompX: 9, numCompY: 9).hash;
           val.picHash = picHash;
         } on BlurHashEncodeException catch (e) {
           logger.e(e.message);
@@ -76,8 +78,10 @@ class WordManagementController extends DocumentUpdateController<Word> {
       final pinyins = form.value.controls['例句-拼音'].value.split('\n');
       final meanings = form.value.controls['例句-日语'].value.split('\n');
       doc.update((val) {
-        val.wordMeanings.assignAll([val.wordMeanings.single
-            .copyWith(examples: examples, examplePinyins: pinyins, exampleMeanings: meanings)]);
+        val.wordMeanings.assignAll([
+          val.wordMeanings.single
+              .copyWith(examples: examples, examplePinyins: pinyins, exampleMeanings: meanings)
+        ]);
       });
       return;
     }
@@ -86,7 +90,7 @@ class WordManagementController extends DocumentUpdateController<Word> {
       moveRow(doc, updated);
       return;
     }
-    await doc.update((val) {
+    doc.update((val) {
       switch (name) {
         case '单词':
           val.word.assignAll((updated as String).split(''));

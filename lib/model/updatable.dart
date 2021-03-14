@@ -1,14 +1,13 @@
 // Dart imports:
 import 'dart:math';
 import 'dart:typed_data';
-import 'package:collection/collection.dart';
-import 'package:cschool_webapp/service/lecture_service.dart';
 
 // Flutter imports:
 import 'package:flutter/foundation.dart';
 
 // Package imports:
 import 'package:archive/archive.dart';
+import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
@@ -17,6 +16,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 import 'package:supercharged/supercharged.dart';
 
 // Project imports:
+import 'package:cschool_webapp/service/lecture_service.dart';
 import '../service/api_service.dart';
 import '../service/logger_service.dart';
 import '../view/ui_view/password_require.dart';
@@ -229,7 +229,7 @@ abstract class DocumentUpdateController<T extends UpdatableDocument<T>> extends 
     final toIndex = indexOfId(toId) - 1; // doc id start from 1
     final length = toIndex - fromIndex;
     final delta = length > 0 ? -1 : 1;
-    final range = length.rangeTo(0).sortedByNum((e) => e.abs())..remove(0);
+    final range = length.rangeTo(0).sortedBy<num>((e) => e.abs())..remove(0);
     // Move rows between fromIndex and toIndex
     range.forEach((i) {
       // 0 is the target document, we will deal with it later

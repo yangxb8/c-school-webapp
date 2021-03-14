@@ -1,6 +1,7 @@
-// Flutter imports:
+// Dart imports:
 import 'dart:convert';
 
+// Flutter imports:
 import 'package:flutter/foundation.dart';
 
 // Package imports:
@@ -39,8 +40,7 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
         try {
           if (!tryLock()) return;
           var image = img.decodeImage(file.bytes);
-          final picHash = await encodeBlurHash(image.getBytes(), image.width, image.height,
-              numCompX: 9, numpCompY: 9);
+          final picHash = BlurHash.encode(image, numCompX: 9, numCompY: 9).hash;
           val.picHash = picHash;
         } on BlurHashEncodeException catch (e) {
           logger.e(e.message);
@@ -56,7 +56,7 @@ class LectureManagementController extends DocumentUpdateController<Lecture> {
       moveRow(doc, updated);
       return;
     }
-    await doc.update((val) {
+    doc.update((val) {
       switch (name) {
         case '标题':
           val.title = updated;

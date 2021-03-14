@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 
 // Package imports:
 import 'package:get/get.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 
 // Project imports:
 import 'package:cschool_webapp/model/lecture.dart';
-import 'package:reactive_forms/reactive_forms.dart';
 import '../controller/lecture_management_controller.dart';
 import 'ui_view/document_manager.dart';
 

@@ -1,11 +1,16 @@
+// Flutter imports:
+import 'package:flutter/material.dart';
+import 'package:flutter/src/widgets/framework.dart';
+
+// Package imports:
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:get/get.dart';
+import 'package:reactive_forms/reactive_forms.dart';
+
+// Project imports:
 import 'package:cschool_webapp/controller/word_management_controller.dart';
 import 'package:cschool_webapp/model/word.dart';
 import 'package:cschool_webapp/view/ui_view/document_manager.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:get/get.dart';
-import 'package:reactive_forms/reactive_forms.dart';
 
 class WordManagement extends GetView<WordManagementController> {
   static const idPattern = r'^C\d{4}-\d{3}$';

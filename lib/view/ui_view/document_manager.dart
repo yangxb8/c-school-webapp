@@ -200,7 +200,7 @@ class DocumentManager<T extends UpdatableDocument<T>, N extends DocumentUpdateCo
                         icon: Icon(Icons.add),
                         onPressed: controller.processing.isTrue
                             ? null
-                            : () async => await controller.addRow(index: index)));
+                            : () async => controller.addRow(index: index)));
                     var deleteButton = Obx(
                       () => IconButton(
                           icon: Icon(Icons.indeterminate_check_box_outlined),

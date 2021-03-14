@@ -1,6 +1,4 @@
 // Flutter imports:
-import 'package:cschool_webapp/view/word_management.dart';
-import 'package:cschool_webapp/view/word_management_home.dart';
 import 'package:flutter/cupertino.dart';
 
 // Package imports:
@@ -10,6 +8,8 @@ import 'package:get/get.dart';
 import 'package:cschool_webapp/controller/lecture_management_controller.dart';
 import 'package:cschool_webapp/view/lecture_management.dart';
 import 'package:cschool_webapp/view/splash.dart';
+import 'package:cschool_webapp/view/word_management.dart';
+import 'package:cschool_webapp/view/word_management_home.dart';
 import 'controller/home_controller.dart';
 import 'controller/word_management_controller.dart';
 import 'service/app_state_service.dart';

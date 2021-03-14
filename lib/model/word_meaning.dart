@@ -5,9 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flamingo_annotation/flamingo_annotation.dart';
 import 'package:supercharged/supercharged.dart';
-import '../util/utility.dart';
 
 // Project imports:
+import '../util/utility.dart';
 import 'word_example.dart';
 
 part 'word_meaning.flamingo.dart';

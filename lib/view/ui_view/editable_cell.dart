@@ -7,12 +7,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flamingo/flamingo.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:get/get.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 // Project imports:
 import 'package:cschool_webapp/model/updatable.dart';
-import 'package:cschool_webapp/service/audio_service.dart';
-import 'package:reactive_forms/reactive_forms.dart';
 
 typedef ContentBuilder<T extends UpdatableDocument<T>> = Widget Function(T doc);
 
@@ -93,10 +92,6 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
                 data,
                 fit: BoxFit.cover,
               );
-            } else if (name.contains('音频')) {
-              return IconButton(
-                  icon: Icon(Icons.play_arrow),
-                  onPressed: () => Get.find<AudioService>().play(data));
             }
           } else if (value is List<StorageFile>) {
             // Audios
@@ -150,10 +145,6 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
               height: height,
               width: width,
             );
-          } else if (name.contains('audio')) {
-            uploadedWidget = IconButton(
-                icon: Icon(Icons.play_arrow),
-                onPressed: () => Get.find<AudioService>().play(val.value.bytes));
           }
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -221,8 +212,8 @@ class EditableCell<T extends UpdatableDocument<T>, N extends DocumentUpdateContr
 
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
-        child: Container(width: width, height: height, child: origin),
         onTap: onTap,
+        child: Container(width: width, height: height, child: origin),
       );
     }, controller.docs);
   }
@@ -244,10 +235,10 @@ class TitleCell extends StatelessWidget {
       width: width,
       alignment: Alignment.center,
       height: height,
+      color: color,
       child: AutoSizeText(
         title ?? '',
       ),
-      color: color,
     );
   }
 }

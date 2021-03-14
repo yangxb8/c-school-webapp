@@ -6,10 +6,10 @@ import 'package:get/get.dart';
 // Project imports:
 import 'package:cschool_webapp/model/updatable.dart';
 import '../service/lecture_service.dart';
+import '../util/utility.dart';
 import 'lecture.dart';
 import 'searchable.dart';
 import 'word_meaning.dart';
-import '../util/utility.dart';
 
 part 'word.flamingo.dart';
 
@@ -138,7 +138,7 @@ class Word extends Document<Word> with UpdatableDocument<Word> implements Search
     ..wordMeanings = wordMeanings.map((m) => m.copyWith()).toList();
 
   @override
-  String generateIdFromIndex(int index) => '${lectureId}-${index.toString().padLeft(3, '0')}';
+  String generateIdFromIndex(int index) => '$lectureId-${index.toString().padLeft(3, '0')}';
 
   @override
   int get indexOfId => int.parse(id.split('-').last);

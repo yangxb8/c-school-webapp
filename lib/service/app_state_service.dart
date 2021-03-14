@@ -4,6 +4,8 @@
 * This service use ApiService and LocalStorageService so they must be
 * initialized first!
 */
+
+// Package imports:
 import 'package:get/get.dart';
 
 class AppStateService {
